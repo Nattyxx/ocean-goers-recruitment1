@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Spinner } from './ui/Spinner';
 import { useAuth } from '../lib/auth';
@@ -40,8 +40,8 @@ export function AuthModal({
         reset();
       }
     } else if (mode === 'signup') {
-      if (password.length < 6) {
-        toast('Password must be at least 6 characters.', 'error');
+      if (password.length < 8) {
+        toast('Password is too weak. It must be at least 8 characters long.', 'error');
         setLoading(false);
         return;
       }
@@ -150,12 +150,27 @@ export function AuthModal({
                 {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
+            {mode === 'signup' && password.length > 0 && (
+              <div className="mt-2 flex items-center gap-1.5 text-sm">
+                {password.length >= 8 ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span className="text-emerald-600 font-medium">Strong password</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <span className="text-red-500">Password is too weak. It must be at least 8 characters long.</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (mode === 'signup' && password.length < 8)}
           className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? (

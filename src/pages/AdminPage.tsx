@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
+  Download, ExternalLink, Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -11,9 +12,20 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
-import { STATUSES } from '../lib/constants';
+import { STATUSES, DOC_TYPES } from '../lib/constants';
 
 type Status = typeof STATUSES[number] | 'Verified' | 'Medical' | 'Visa Processing' | 'Deployment';
+
+interface AdminDoc {
+  id: string;
+  doc_type: string;
+  file_name: string;
+  file_url: string;
+  file_size: number;
+  mime_type: string | null;
+  status: string;
+  uploaded_at: string;
+}
 
 interface AdminApp {
   id: string;
@@ -31,6 +43,7 @@ interface AdminApp {
     experience_years: number;
   } | null;
   doc_count: number;
+  documents: AdminDoc[];
   payment_status: string | null;
 }
 
@@ -72,28 +85,33 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
 
     const [profileRes, docRes, payRes] = await Promise.all([
       supabase.from('profiles').select('id, full_name, phone, email, position, experience_years').in('id', userIds),
-      supabase.from('documents').select('user_id').in('user_id', userIds),
+      supabase.from('documents').select('id, user_id, doc_type, file_name, file_url, file_size, mime_type, status, uploaded_at').in('user_id', userIds).order('uploaded_at', { ascending: false }),
       supabase.from('payments').select('application_id, status').in('application_id', appIds),
     ]);
 
     type ProfileRow = { id: string; full_name: string | null; phone: string | null; email: string | null; position: string | null; experience_years: number };
-    type DocRow = { user_id: string };
     type PayRow = { application_id: string; status: string };
     type AppRow = { id: string; user_id: string; position: string | null; status: string; current_step: number; submitted_at: string; updated_at: string };
 
     const profileMap = new Map((profileRes.data ?? []).map((p: ProfileRow) => [p.id, p]));
-    const docCountMap = new Map<string, number>();
-    (docRes.data ?? []).forEach((d: DocRow) => {
-      docCountMap.set(d.user_id, (docCountMap.get(d.user_id) ?? 0) + 1);
+    const docsByUser = new Map<string, AdminDoc[]>();
+    (docRes.data ?? []).forEach((d: AdminDoc) => {
+      const list = docsByUser.get(d.user_id) ?? [];
+      list.push(d);
+      docsByUser.set(d.user_id, list);
     });
     const payMap = new Map((payRes.data ?? []).map((p: PayRow) => [p.application_id, p.status]));
 
-    const enriched: AdminApp[] = (data as AppRow[]).map((a) => ({
-      ...a,
-      profile: profileMap.get(a.user_id) ?? null,
-      doc_count: docCountMap.get(a.user_id) ?? 0,
-      payment_status: payMap.get(a.id) ?? null,
-    }));
+    const enriched: AdminApp[] = (data as AppRow[]).map((a) => {
+      const docs = docsByUser.get(a.user_id) ?? [];
+      return {
+        ...a,
+        profile: profileMap.get(a.user_id) ?? null,
+        doc_count: docs.length,
+        documents: docs,
+        payment_status: payMap.get(a.id) ?? null,
+      };
+    });
 
     setApps(enriched);
     setLoading(false);
@@ -352,6 +370,8 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
               </div>
             )}
 
+            <DocumentsSection docs={selected.documents} />
+
             <div className="flex gap-2 pt-2">
               <button
                 onClick={() => updateStatus(selected.id, 'Approved', 7)}
@@ -385,4 +405,99 @@ function InfoRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string
       </div>
     </div>
   );
+}
+
+function DocumentsSection({ docs }: { docs: AdminDoc[] }) {
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (docs.length === 0) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      const entries = await Promise.all(
+        docs.map(async (d) => {
+          const path = extractStoragePath(d.file_url);
+          if (!path) return [d.id, d.file_url] as const;
+          const { data, error } = await supabase.storage.from('documents').createSignedUrl(path, 3600);
+          if (error || !data?.signedUrl) return [d.id, d.file_url] as const;
+          return [d.id, data.signedUrl] as const;
+        }),
+      );
+      if (!cancelled) {
+        setSignedUrls(Object.fromEntries(entries));
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [docs]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-6">
+        <Loader2 className="w-5 h-5 text-ocean-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (docs.length === 0) {
+    return (
+      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
+        <FileText className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+        <p className="text-sm text-slate-400">No documents uploaded</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Uploaded Documents ({docs.length})</p>
+      {docs.map((d) => {
+        const url = signedUrls[d.id] ?? d.file_url;
+        return (
+          <div key={d.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <FileText className="w-4 h-4 text-ocean-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-ocean-900 font-medium truncate">{d.file_name}</p>
+              <p className="text-xs text-slate-400">
+                {DOC_TYPES.find((t) => t.key === d.doc_type)?.label ?? d.doc_type} · {(d.file_size / 1024).toFixed(0)}KB
+              </p>
+            </div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-ocean-50 text-ocean-700 text-xs font-medium hover:bg-ocean-100 transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              View
+            </a>
+            <a
+              href={url}
+              download={d.file_name}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download
+            </a>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function extractStoragePath(fileUrl: string): string | null {
+  try {
+    const url = new URL(fileUrl);
+    const idx = url.pathname.indexOf('/documents/');
+    if (idx === -1) return null;
+    return decodeURIComponent(url.pathname.slice(idx + '/documents/'.length));
+  } catch {
+    return null;
+  }
 }

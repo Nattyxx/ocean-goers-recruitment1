@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply font-sans text-ocean-900 bg-slate-50 antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-glass;
+  }
+  .glass-dark {
+    @apply bg-ocean-900/40 backdrop-blur-xl border border-white/15 shadow-glass;
+  }
+  .glass-card {
+    @apply glass rounded-2xl transition-all duration-300;
+  }
+  .glass-card-hover:hover {
+    @apply -translate-y-1.5 shadow-glass-lg;
+  }
+  .btn-gold {
+    @apply bg-gold-400 text-ocean-900 font-bold rounded-full px-6 py-3 transition-all duration-300 hover:bg-gold-300 hover:shadow-gold hover:-translate-y-0.5 active:translate-y-0;
+  }
+  .btn-ocean {
+    @apply bg-ocean-800 text-white font-semibold rounded-full px-6 py-3 transition-all duration-300 hover:bg-ocean-700 hover:-translate-y-0.5 active:translate-y-0;
+  }
+  .btn-ghost {
+    @apply border border-white/30 text-white font-semibold rounded-full px-6 py-3 transition-all duration-300 hover:bg-white/10 hover:border-white/50;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl border border-slate-200 bg-white/80 text-ocean-900 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:border-ocean-500 focus:ring-2 focus:ring-ocean-500/20;
+  }
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200/70 rounded-lg;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+    background-size: 1000px 100%;
+    animation: shimmer 2s linear infinite;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-gold-300 via-gold-400 to-gold-500 bg-clip-text text-transparent;
+  }
+  .text-gradient-ocean {
+    @apply bg-gradient-to-r from-ocean-600 via-ocean-500 to-ocean-400 bg-clip-text text-transparent;
+  }
+  .hero-grid {
+    background-image: linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #f0f4f8; }
+::-webkit-scrollbar-thumb { background: #b3d7ec; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #7ab8de; }

@@ -20,7 +20,7 @@ export const APPLICATION_STEPS = [
   { key: 'deployment', label: 'Deployment', icon: 'Ship' },
 ] as const;
 
-export const STATUSES = ['Pending', 'Under Review', 'Interview', 'Approved', 'Rejected'] as const;
+export const STATUSES = ['Pending', 'Under Review', 'Interview', 'Medical', 'Visa Processing', 'Deployment', 'Approved', 'Rejected'] as const;
 
 export const VERIFICATION = ['Pending', 'Verified', 'Rejected'] as const;
 

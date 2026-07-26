@@ -79,18 +79,22 @@ export function StatusCheckModal({ open, onClose }: { open: boolean; onClose: ()
           </div>
           <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Progress</p>
           <div className="flex items-center gap-1.5">
-            {APPLICATION_STEPS.map((step, i) => (
-              <div key={step.key} className="flex items-center flex-1 last:flex-none">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                  i < result.current_step ? 'bg-emerald-500 text-white' : i === result.current_step - 1 ? 'bg-gold-400 text-ocean-900' : 'bg-slate-200 text-slate-400'
-                }`}>
-                  {i < result.current_step ? '✓' : i + 1}
+            {APPLICATION_STEPS.map((step, i) => {
+              const isComplete = i < result.current_step - 1;
+              const isCurrent = i === result.current_step - 1;
+              return (
+                <div key={step.key} className="flex items-center flex-1 last:flex-none">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                    isComplete ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-gold-400 text-ocean-900' : 'bg-slate-200 text-slate-400'
+                  }`}>
+                    {isComplete ? '✓' : i + 1}
+                  </div>
+                  {i < APPLICATION_STEPS.length - 1 && (
+                    <div className={`flex-1 h-1 mx-1 rounded-full ${isComplete ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                  )}
                 </div>
-                {i < APPLICATION_STEPS.length - 1 && (
-                  <div className={`flex-1 h-1 mx-1 rounded-full ${i < result.current_step - 1 ? 'bg-emerald-400' : 'bg-slate-200'}`} />
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

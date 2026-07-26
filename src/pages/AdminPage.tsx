@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
-  Download, ExternalLink, Loader2,
+  Download, ExternalLink, Loader2, ArrowRightCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -12,7 +12,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
-import { STATUSES, DOC_TYPES } from '../lib/constants';
+import { STATUSES, DOC_TYPES, APPLICATION_STEPS } from '../lib/constants';
 
 type Status = typeof STATUSES[number] | 'Verified' | 'Medical' | 'Visa Processing' | 'Deployment';
 
@@ -167,6 +167,13 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setActionLoading(false);
   };
 
+  const advanceStage = async (id: string, currentStep: number) => {
+    if (currentStep >= 7) return;
+    const nextStep = currentStep + 1;
+    const nextStatus = APPLICATION_STEPS[nextStep - 1].label;
+    await updateStatus(id, nextStatus, nextStep);
+  };
+
   if (!profile?.is_admin) {
     return (
       <div className="pt-20 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -313,12 +320,12 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => updateStatus(a.id, 'Approved', 7)}
-                          disabled={actionLoading || a.status === 'Approved'}
-                          className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40"
-                          title="Approve"
+                          onClick={() => advanceStage(a.id, a.current_step)}
+                          disabled={actionLoading || a.current_step >= 7}
+                          className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Next Stage"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          <ArrowRightCircle className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => updateStatus(a.id, 'Rejected', 1)}
@@ -374,11 +381,11 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
 
             <div className="flex gap-2 pt-2">
               <button
-                onClick={() => updateStatus(selected.id, 'Approved', 7)}
-                disabled={actionLoading || selected.status === 'Approved'}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                onClick={() => advanceStage(selected.id, selected.current_step)}
+                disabled={actionLoading || selected.current_step >= 7}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <CheckCircle2 className="w-4 h-4" /> Approve
+                <ArrowRightCircle className="w-4 h-4" /> Next Stage
               </button>
               <button
                 onClick={() => updateStatus(selected.id, 'Rejected', 1)}

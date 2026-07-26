@@ -53,8 +53,8 @@ export function ApplyModal({
       user_id: user.id,
       position,
       phone,
-      status: 'Pending',
-      current_step: 1,
+      status: 'Under Review',
+      current_step: 3,
     });
 
     if (error) {

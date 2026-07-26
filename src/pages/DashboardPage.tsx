@@ -240,7 +240,7 @@ export function DashboardPage({ onNavigate }: Props) {
           <GlassCard>
             <h3 className="font-display font-bold text-lg text-ocean-900 mb-5">Application Progress</h3>
             {application ? (
-              <ApplicationTimeline currentStep={application.current_step} />
+              <ApplicationTimeline currentStep={application.current_step} hasDocuments={docCount > 0} />
             ) : (
               <div className="text-center py-8">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />

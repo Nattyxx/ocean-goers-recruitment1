@@ -19,15 +19,22 @@ interface AppData {
   submitted_at: string;
 }
 
+interface DocRow {
+  id: string;
+}
+
 export function TrackingPage({ onNavigate }: Props) {
   const { user, profile } = useAuth();
   const [app, setApp] = useState<AppData | null>(null);
+  const [docCount, setDocCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('applications').select('*').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle();
     setApp(data as AppData | null);
+    const { count } = await supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+    setDocCount(count ?? 0);
     setLoading(false);
   }, [user]);
 
@@ -97,7 +104,7 @@ export function TrackingPage({ onNavigate }: Props) {
         {/* Timeline */}
         <GlassCard className="lg:col-span-2">
           <h3 className="font-display font-bold text-lg text-ocean-900 mb-6">Application Pipeline</h3>
-          <ApplicationTimeline currentStep={app.current_step} />
+          <ApplicationTimeline currentStep={app.current_step} hasDocuments={docCount > 0} />
         </GlassCard>
       </div>
     </div>

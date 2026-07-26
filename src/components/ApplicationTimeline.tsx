@@ -8,7 +8,7 @@ const icons: Record<string, typeof FileText> = {
   FileText, FolderCheck, Search, Video, HeartPulse, Plane, Ship,
 };
 
-export function ApplicationTimeline({ currentStep }: { currentStep: number }) {
+export function ApplicationTimeline({ currentStep, hasDocuments = true }: { currentStep: number; hasDocuments?: boolean }) {
   return (
     <div className="relative">
       {/* Vertical line */}
@@ -17,9 +17,9 @@ export function ApplicationTimeline({ currentStep }: { currentStep: number }) {
       <div className="space-y-6">
         {APPLICATION_STEPS.map((step, i) => {
           const Icon = icons[step.icon] ?? Circle;
-          const isComplete = i < currentStep - 1;
-          const isCurrent = i === currentStep - 1;
-          const isPending = i > currentStep - 1;
+          const isComplete = i < currentStep - 1 && (i !== 1 || hasDocuments);
+          const isCurrent = i === currentStep - 1 || (i === 1 && !hasDocuments && currentStep >= 2);
+          const isPending = i > currentStep - 1 && !(i === 1 && !hasDocuments && currentStep >= 2);
 
           return (
             <div key={step.key} className="relative flex items-start gap-4 animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>

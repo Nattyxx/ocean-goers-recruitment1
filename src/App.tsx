@@ -86,7 +86,12 @@ function AppContent() {
       </main>
       <Footer onNavigate={navigate} />
 
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} initialMode={authMode} />
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        initialMode={authMode}
+        onGotoDashboard={() => navigate('dashboard')}
+      />
       <StatusCheckModal open={statusOpen} onClose={() => setStatusOpen(false)} />
     </div>
   );

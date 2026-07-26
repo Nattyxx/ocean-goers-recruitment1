@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, MailCheck } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Spinner } from './ui/Spinner';
 import { useAuth } from '../lib/auth';
@@ -12,10 +12,12 @@ export function AuthModal({
   open,
   onClose,
   initialMode = 'login',
+  onGotoDashboard,
 }: {
   open: boolean;
   onClose: () => void;
   initialMode?: Mode;
+  onGotoDashboard?: () => void;
 }) {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
@@ -25,6 +27,7 @@ export function AuthModal({
   const [fullName, setFullName] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmationMsg, setConfirmationMsg] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +48,16 @@ export function AuthModal({
         setLoading(false);
         return;
       }
-      const { error } = await signUp(email, password, fullName);
+      const { error, needsConfirmation } = await signUp(email, password, fullName);
       if (error) {
         toast(error, 'error');
+      } else if (needsConfirmation) {
+        setConfirmationMsg(true);
       } else {
         toast('Account created! You are now logged in.', 'success');
         onClose();
         reset();
+        onGotoDashboard?.();
       }
     } else {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -71,11 +77,13 @@ export function AuthModal({
     setEmail('');
     setPassword('');
     setFullName('');
+    setConfirmationMsg(false);
   };
 
   const switchMode = (m: Mode) => {
     setMode(m);
     setShowPw(false);
+    setConfirmationMsg(false);
   };
 
   return (
@@ -85,10 +93,12 @@ export function AuthModal({
           <Ship className="w-7 h-7 text-gold-400" />
         </div>
         <h2 className="font-display font-bold text-2xl text-ocean-900">
-          {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join Ocean Goers' : 'Reset Password'}
+          {confirmationMsg ? 'Check Your Email' : mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join Ocean Goers' : 'Reset Password'}
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          {mode === 'login'
+          {confirmationMsg
+            ? 'Your account has been created successfully. Please verify your email to activate your account.'
+            : mode === 'login'
             ? 'Sign in to your recruitment portal'
             : mode === 'signup'
             ? 'Start your cruise ship career journey'
@@ -96,6 +106,27 @@ export function AuthModal({
         </p>
       </div>
 
+      {confirmationMsg ? (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-ocean-50 border border-ocean-100">
+            <MailCheck className="w-5 h-5 text-ocean-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-ocean-700">
+              We&apos;ve sent a verification link to <span className="font-semibold">{email}</span>. Click the link in the email to activate your account, then sign in.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              reset();
+              switchMode('login');
+            }}
+            className="btn-gold w-full flex items-center justify-center gap-2"
+          >
+            Got it <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === 'signup' && (
           <div>
@@ -183,7 +214,9 @@ export function AuthModal({
           )}
         </button>
       </form>
+      )}
 
+      {!confirmationMsg && (
       <div className="mt-5 text-center text-sm text-slate-500">
         {mode === 'login' && (
           <>
@@ -215,6 +248,7 @@ export function AuthModal({
           </p>
         )}
       </div>
+      )}
     </Modal>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
-  Download, ExternalLink, Loader2, ArrowRightCircle,
+  Download, ExternalLink, Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -170,7 +170,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const advanceStage = async (id: string, currentStep: number) => {
     if (currentStep >= 7) return;
     const nextStep = currentStep + 1;
-    const nextStatus = APPLICATION_STEPS[nextStep - 1].label;
+    const nextStatus = nextStep === 7 ? 'Approved' : APPLICATION_STEPS[nextStep - 1].label;
     await updateStatus(id, nextStatus, nextStep);
   };
 
@@ -379,22 +379,13 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
 
             <DocumentsSection docs={selected.documents} />
 
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => advanceStage(selected.id, selected.current_step)}
-                disabled={actionLoading || selected.current_step >= 7}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ArrowRightCircle className="w-4 h-4" /> Next Stage
-              </button>
-              <button
-                onClick={() => updateStatus(selected.id, 'Rejected', 1)}
-                disabled={actionLoading || selected.status === 'Rejected'}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-600 text-white font-medium text-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
-              >
-                <XCircle className="w-4 h-4" /> Reject
-              </button>
-            </div>
+            <StageApprovalSection
+              currentStep={selected.current_step}
+              actionLoading={actionLoading}
+              onApprove={(step) => advanceStage(selected.id, step)}
+              onReject={() => updateStatus(selected.id, 'Rejected', 1)}
+              isRejected={selected.status === 'Rejected'}
+            />
           </div>
         )}
       </Modal>
@@ -507,4 +498,88 @@ function extractStoragePath(fileUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+function StageApprovalSection({
+  currentStep,
+  actionLoading,
+  onApprove,
+  onReject,
+  isRejected,
+}: {
+  currentStep: number;
+  actionLoading: boolean;
+  onApprove: (step: number) => void;
+  onReject: () => void;
+  isRejected: boolean;
+}) {
+  const APPROVAL_STEPS = APPLICATION_STEPS.slice(2);
+  const isComplete = currentStep > 7;
+
+  return (
+    <div className="space-y-3 pt-2">
+      <h4 className="font-display font-bold text-sm text-ocean-900">Stage Approvals</h4>
+      <div className="space-y-2">
+        {APPROVAL_STEPS.map((step, i) => {
+          const stepNum = i + 3;
+          const approved = currentStep > stepNum;
+          const isCurrent = currentStep === stepNum;
+          const isLast = stepNum === 7;
+          return (
+            <div
+              key={step.key}
+              className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors ${
+                approved ? 'bg-emerald-50 border-emerald-200' : isCurrent ? 'bg-gold-50 border-gold-200' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    approved ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-gold-400 text-ocean-900' : 'bg-slate-200 text-slate-400'
+                  }`}
+                >
+                  {approved ? <CheckCircle2 className="w-4 h-4" /> : <span className="text-xs font-bold">{stepNum}</span>}
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium truncate ${approved || isCurrent ? 'text-ocean-900' : 'text-slate-500'}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {approved ? 'Approved' : isCurrent ? 'Ready for approval' : 'Pending'}
+                  </p>
+                </div>
+              </div>
+              {approved ? (
+                <span className="text-xs font-semibold text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">Done</span>
+              ) : isCurrent ? (
+                <button
+                  onClick={() => onApprove(stepNum)}
+                  disabled={actionLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Approve {isLast ? '& Deploy' : ''}
+                </button>
+              ) : (
+                <span className="text-xs text-slate-400 px-2 py-1">Locked</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {isComplete && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4" /> All stages approved. Application fully approved.
+        </div>
+      )}
+
+      <button
+        onClick={onReject}
+        disabled={actionLoading || isRejected}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-rose-600 text-white font-medium text-sm hover:bg-rose-700 transition-colors disabled:opacity-50"
+      >
+        <XCircle className="w-4 h-4" /> {isRejected ? 'Rejected' : 'Reject Application'}
+      </button>
+    </div>
+  );
 }

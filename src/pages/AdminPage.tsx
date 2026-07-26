@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
-  Download, ExternalLink, Loader2,
+  Download, ExternalLink, Loader2, ArrowRightCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -168,9 +168,9 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   };
 
   const advanceStage = async (id: string, currentStep: number) => {
-    if (currentStep >= 7) return;
+    if (currentStep >= 8) return;
     const nextStep = currentStep + 1;
-    const nextStatus = nextStep === 7 ? 'Approved' : APPLICATION_STEPS[nextStep - 1].label;
+    const nextStatus = nextStep > 7 ? 'Approved' : APPLICATION_STEPS[nextStep - 1].label;
     await updateStatus(id, nextStatus, nextStep);
   };
 
@@ -321,7 +321,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                         </button>
                         <button
                           onClick={() => advanceStage(a.id, a.current_step)}
-                          disabled={actionLoading || a.current_step >= 7}
+                          disabled={actionLoading || a.current_step >= 8}
                           className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Next Stage"
                         >

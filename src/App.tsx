@@ -13,6 +13,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { TrackingPage } from './pages/TrackingPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { AdminPage } from './pages/AdminPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import {
   AboutPage, ContactPage, ServicesPage, MessagesPage, SupportPage,
   SettingsPage, PrivacyPage, TermsPage,
@@ -26,6 +27,26 @@ function AppContent() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [statusOpen, setStatusOpen] = useState(false);
+  const [isResetRoute, setIsResetRoute] = useState(false);
+
+  // Detect /reset-password path from the URL so the email reset link opens
+  // the ResetPassword page instead of a 404. Supabase puts the recovery token
+  // in the URL hash; the path itself is /reset-password.
+  useEffect(() => {
+    const path = window.location.pathname.replace(/\/$/, '');
+    if (path === '/reset-password') {
+      setIsResetRoute(true);
+    }
+  }, []);
+
+  const finishReset = () => {
+    setIsResetRoute(false);
+    // Clear the reset URL so the user lands on the normal home page.
+    window.history.replaceState({}, '', '/');
+    setPage('home');
+    setAuthMode('login');
+    setAuthOpen(true);
+  };
 
   const navigate = (p: string) => {
     if (PROTECTED_PAGES.includes(p) && !user) {
@@ -50,6 +71,11 @@ function AppContent() {
   }, [user, authOpen]);
 
   if (loading) return <FullPageSpinner label="Loading Ocean Goers..." />;
+
+  // Password reset route takes over the entire screen (no navbar/footer).
+  if (isResetRoute) {
+    return <ResetPasswordPage onComplete={finishReset} />;
+  }
 
   const renderPage = () => {
     switch (page) {

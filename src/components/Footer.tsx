@@ -91,11 +91,11 @@ export function Footer({ onNavigate }: Props) {
               </li>
               <li className="flex items-center gap-3 text-sm text-ocean-300">
                 <Phone className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                <span>+251 911 234 567</span>
+                <span>+971 58 857 6150</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-ocean-300">
                 <Mail className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                <span>info@oceangoers.com</span>
+                <span>info@oceangoersrecruitment.ae</span>
               </li>
             </ul>
           </div>

@@ -159,7 +159,7 @@ export function PaymentPage() {
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100">
-          <p className="text-sm font-medium text-ocean-700 mb-1">Registration Fee: <span className="font-bold text-ocean-900">5,000 ETB</span> (≈ $100 USD)</p>
+          <p className="text-sm font-medium text-ocean-700 mb-1">Registration Fee: <span className="font-bold text-ocean-900">5,000 ETB</span> (≈ $90 USD)</p>
           <p className="text-sm text-slate-500 mb-4">Transfer to any of the accounts below, then upload your receipt for verification.</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

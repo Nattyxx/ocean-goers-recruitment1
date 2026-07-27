@@ -52,8 +52,7 @@ export function ApplyModal({
     const { error } = await supabase.from('applications').insert({
       user_id: user.id,
       position,
-      phone,
-      status: 'Under Review',
+      status: 'Pending',
       current_step: 3,
     });
 

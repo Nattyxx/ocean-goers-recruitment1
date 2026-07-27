@@ -1,7 +1,12 @@
-type Variant = 'Pending' | 'Under Review' | 'Interview' | 'Approved' | 'Rejected' | 'Verified' | 'Medical' | 'Visa Processing' | 'Deployment';
+type Variant =
+  | 'Pending' | 'Awaiting Payment' | 'Pending Verification'
+  | 'Under Review' | 'Interview' | 'Approved' | 'Rejected'
+  | 'Verified' | 'Medical' | 'Visa Processing' | 'Deployment';
 
 const styles: Record<string, string> = {
   Pending: 'bg-amber-100 text-amber-700 border-amber-200',
+  'Awaiting Payment': 'bg-amber-100 text-amber-700 border-amber-200',
+  'Pending Verification': 'bg-amber-100 text-amber-700 border-amber-200',
   'Under Review': 'bg-ocean-100 text-ocean-700 border-ocean-200',
   Interview: 'bg-violet-100 text-violet-700 border-violet-200',
   Medical: 'bg-rose-100 text-rose-700 border-rose-200',

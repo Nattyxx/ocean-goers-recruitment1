@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabase';
 import { Spinner } from '../components/ui/Spinner';
 import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { ApplicationTimeline } from '../components/ApplicationTimeline';
-import { FileText, Calendar, Ship, ArrowRight } from 'lucide-react';
+import { ApplicationTimeline, type PaymentStatus } from '../components/ApplicationTimeline';
+import { REQUIRED_DOC_KEYS } from '../lib/constants';
+import { FileText, Calendar, Ship, ArrowRight, CreditCard, Upload } from 'lucide-react';
 
 interface Props {
   onNavigate: (page: string) => void;
@@ -19,22 +20,33 @@ interface AppData {
   submitted_at: string;
 }
 
+interface PayRow {
+  status: string;
+}
+
 interface DocRow {
-  id: string;
+  doc_type: string;
 }
 
 export function TrackingPage({ onNavigate }: Props) {
   const { user, profile } = useAuth();
   const [app, setApp] = useState<AppData | null>(null);
-  const [docCount, setDocCount] = useState(0);
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('none');
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('applications').select('*').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle();
     setApp(data as AppData | null);
-    const { count } = await supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
-    setDocCount(count ?? 0);
+    const { data: docData } = await supabase.from('documents').select('doc_type').eq('user_id', user.id);
+    const types = [...new Set((docData ?? []).map((d: DocRow) => d.doc_type))];
+    setDocTypes(types);
+    if (data) {
+      const { data: payData } = await supabase.from('payments').select('status').eq('application_id', (data as AppData).id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const ps = (payData as PayRow | null)?.status;
+      setPaymentStatus(ps === 'Verified' ? 'verified' : ps === 'Rejected' ? 'rejected' : ps === 'Pending' ? 'pending' : 'none');
+    } else { setPaymentStatus('none'); }
     setLoading(false);
   }, [user]);
 
@@ -89,22 +101,28 @@ export function TrackingPage({ onNavigate }: Props) {
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
               <span className="text-slate-500">Current Step</span>
-              <span className="font-medium text-ocean-700">{app.current_step} / 7</span>
+              <span className="font-medium text-ocean-700">{app.current_step} / 10</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
               <span className="text-slate-500">Applicant</span>
               <span className="font-medium text-ocean-700">{profile?.full_name || '—'}</span>
             </div>
           </div>
-          <button onClick={() => onNavigate('documents')} className="btn-ocean w-full mt-5 text-sm">
-            Upload Documents
-          </button>
+          {REQUIRED_DOC_KEYS.every((k) => docTypes.includes(k)) ? (
+            <button onClick={() => onNavigate('payment')} className="btn-gold w-full mt-5 text-sm flex items-center justify-center gap-2">
+              <CreditCard className="w-4 h-4" /> Pay Registration Fee
+            </button>
+          ) : (
+            <button onClick={() => onNavigate('documents')} className="btn-ocean w-full mt-5 text-sm flex items-center justify-center gap-2">
+              <Upload className="w-4 h-4" /> Upload Documents
+            </button>
+          )}
         </GlassCard>
 
         {/* Timeline */}
         <GlassCard className="lg:col-span-2">
           <h3 className="font-display font-bold text-lg text-ocean-900 mb-6">Application Pipeline</h3>
-          <ApplicationTimeline currentStep={app.current_step} hasDocuments={docCount > 0} />
+          <ApplicationTimeline currentStep={app.current_step} hasDocuments={REQUIRED_DOC_KEYS.every((k) => docTypes.includes(k))} paymentStatus={paymentStatus} />
         </GlassCard>
       </div>
     </div>

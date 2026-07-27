@@ -10,9 +10,18 @@ export const DOC_TYPES = [
   { key: 'receipt', label: 'Payment Receipt', icon: 'Receipt' },
 ] as const;
 
+// Verification documents required before the registration fee step.
+// The 'receipt' doc type is handled separately via the payments flow.
+export const REQUIRED_DOC_KEYS = DOC_TYPES
+  .filter((d) => d.key !== 'receipt')
+  .map((d) => d.key);
+
 export const APPLICATION_STEPS = [
+  { key: 'account', label: 'Account Created', icon: 'UserCheck' },
   { key: 'submitted', label: 'Application Submitted', icon: 'FileText' },
-  { key: 'documents', label: 'Documents Received', icon: 'FolderCheck' },
+  { key: 'documents', label: 'Documents Uploaded', icon: 'FolderCheck' },
+  { key: 'fee_paid', label: 'Registration Fee Paid', icon: 'CreditCard' },
+  { key: 'payment_verified', label: 'Payment Verified', icon: 'BadgeCheck' },
   { key: 'review', label: 'Under Review', icon: 'Search' },
   { key: 'interview', label: 'Interview', icon: 'Video' },
   { key: 'medical', label: 'Medical', icon: 'HeartPulse' },
@@ -20,9 +29,31 @@ export const APPLICATION_STEPS = [
   { key: 'deployment', label: 'Deployment', icon: 'Ship' },
 ] as const;
 
-export const STATUSES = ['Pending', 'Under Review', 'Interview', 'Medical', 'Visa Processing', 'Deployment', 'Approved', 'Rejected'] as const;
+export const TOTAL_STEPS = APPLICATION_STEPS.length;
+
+export const STATUSES = [
+  'Pending', 'Awaiting Payment', 'Pending Verification',
+  'Under Review', 'Interview', 'Medical', 'Visa Processing',
+  'Deployment', 'Approved', 'Rejected',
+] as const;
 
 export const VERIFICATION = ['Pending', 'Verified', 'Rejected'] as const;
+
+// Maps a 1-indexed current_step to the application status label.
+export function statusForStep(step: number): string {
+  const map: Record<number, string> = {
+    3: 'Pending',
+    4: 'Awaiting Payment',
+    5: 'Pending Verification',
+    6: 'Under Review',
+    7: 'Interview',
+    8: 'Medical',
+    9: 'Visa Processing',
+    10: 'Deployment',
+    11: 'Approved',
+  };
+  return map[step] ?? 'Pending';
+}
 
 export const NOTIF_TYPES = [
   { key: 'message', label: 'New Messages', icon: 'MessageSquare' },

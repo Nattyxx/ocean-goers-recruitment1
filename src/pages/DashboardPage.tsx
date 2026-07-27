@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   User, FileText, Upload, CreditCard, Bell, MessageSquare, LifeBuoy, Settings, LogOut,
   FileCheck, Clock, TrendingUp, CalendarClock, Camera, Mail, Phone, Briefcase, ArrowRight,
-  CheckCircle2, AlertCircle,
+  CheckCircle2, AlertCircle, Wallet, BadgeCheck,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
@@ -11,9 +11,9 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
-import { ApplicationTimeline } from '../components/ApplicationTimeline';
+import { ApplicationTimeline, type PaymentStatus } from '../components/ApplicationTimeline';
 import { Modal } from '../components/ui/Modal';
-import { POSITIONS } from '../lib/constants';
+import { POSITIONS, REQUIRED_DOC_KEYS } from '../lib/constants';
 
 interface Props {
   onNavigate: (page: string) => void;
@@ -27,17 +27,24 @@ interface AppData {
   submitted_at: string;
 }
 
+interface PaymentRow {
+  id: string;
+  status: string;
+  rejection_reason: string | null;
+}
+
 export function DashboardPage({ onNavigate }: Props) {
   const { user, profile, signOut, updateProfile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState<AppData | null>(null);
   const [docCount, setDocCount] = useState(0);
+  const [uploadedDocTypes, setUploadedDocTypes] = useState<string[]>([]);
+  const [payment, setPayment] = useState<PaymentRow | null>(null);
   const [notifCount, setNotifCount] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  // edit form
   const [fullName, setFullName] = useState(profile?.full_name ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [position, setPosition] = useState(profile?.position ?? '');
@@ -48,13 +55,29 @@ export function DashboardPage({ onNavigate }: Props) {
 
     const [appRes, docRes, notifRes] = await Promise.all([
       supabase.from('applications').select('*').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      supabase.from('documents').select('doc_type').eq('user_id', user.id),
       supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('read', false),
     ]);
 
     setApplication(appRes.data as AppData | null);
-    setDocCount(docRes.count ?? 0);
+    const docTypes = (docRes.data ?? []).map((d) => d.doc_type);
+    setDocCount(docTypes.length);
+    setUploadedDocTypes([...new Set(docTypes)]);
     setNotifCount(notifRes.count ?? 0);
+
+    if (appRes.data) {
+      const { data: payData } = await supabase
+        .from('payments')
+        .select('id, status, rejection_reason')
+        .eq('application_id', (appRes.data as AppData).id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setPayment(payData as PaymentRow | null);
+    } else {
+      setPayment(null);
+    }
+
     setLoading(false);
   }, [user]);
 
@@ -111,10 +134,35 @@ export function DashboardPage({ onNavigate }: Props) {
     }
   };
 
+  const requiredDocsComplete = REQUIRED_DOC_KEYS.every((k) => uploadedDocTypes.includes(k));
+
+  // Payment CTA visibility: show only if all required docs uploaded AND no verified payment yet
+  const showPayFeeCta =
+    !!application &&
+    requiredDocsComplete &&
+    payment?.status !== 'Verified';
+
+  // "Upload Documents" button hidden once all required docs are uploaded
+  const hideUploadDocsButton = requiredDocsComplete;
+
+  const paymentTimelineStatus: PaymentStatus = !payment
+    ? 'none'
+    : payment.status === 'Verified'
+      ? 'verified'
+      : payment.status === 'Rejected'
+        ? 'rejected'
+        : 'pending';
+
+  const handlePayFeeClick = () => {
+    onNavigate('payment');
+  };
+
   const dashboardCards = [
     { icon: User, label: 'My Profile', page: 'dashboard', color: 'from-ocean-500 to-ocean-700' },
     { icon: FileText, label: 'My Applications', page: 'tracking', color: 'from-violet-500 to-violet-700' },
-    { icon: Upload, label: 'Upload Documents', page: 'documents', color: 'from-emerald-500 to-emerald-700' },
+    ...(hideUploadDocsButton
+      ? []
+      : [{ icon: Upload, label: 'Upload Documents', page: 'documents', color: 'from-emerald-500 to-emerald-700' }]),
     { icon: CreditCard, label: 'Payment Receipt', page: 'payment', color: 'from-amber-500 to-amber-700' },
     { icon: Bell, label: 'Notifications', page: 'notifications', color: 'from-rose-500 to-rose-700' },
     { icon: MessageSquare, label: 'Messages', page: 'messages', color: 'from-sky-500 to-sky-700' },
@@ -168,14 +216,57 @@ export function DashboardPage({ onNavigate }: Props) {
         </div>
       </div>
 
+      {/* Registration Fee CTA */}
+      {showPayFeeCta && (
+        <div className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-gold-50 to-amber-50 border-2 border-gold-200 animate-scale-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-300 to-gold-500 flex items-center justify-center flex-shrink-0">
+                <Wallet className="w-6 h-6 text-ocean-900" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-lg text-ocean-900">Registration Fee Required</h3>
+                <p className="text-sm text-slate-600 mt-0.5">
+                  All documents uploaded. Pay the <span className="font-semibold text-ocean-800">5,000 ETB</span> registration fee to proceed.
+                </p>
+                {payment?.status === 'Rejected' && (
+                  <p className="text-sm text-rose-600 mt-1 font-medium">
+                    Your previous receipt was rejected. Please upload a new payment receipt.
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={handlePayFeeClick}
+              className="btn-gold whitespace-nowrap flex items-center gap-2 animate-pulse-gold"
+            >
+              <CreditCard className="w-5 h-5" />
+              {payment?.status === 'Rejected' ? 'Upload New Receipt' : 'Pay Registration Fee'}
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment verified banner */}
+      {payment?.status === 'Verified' && (
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center gap-3 animate-scale-in">
+          <BadgeCheck className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-emerald-800">Payment Verified</p>
+            <p className="text-sm text-emerald-600">Your registration fee has been confirmed. Your application is now under review.</p>
+          </div>
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { icon: FileCheck, label: 'Applications Submitted', value: application ? '1' : '0', color: 'text-ocean-600', bg: 'bg-ocean-50' },
-          { icon: Upload, label: 'Documents Uploaded', value: String(docCount), color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { icon: Upload, label: 'Documents Uploaded', value: `${docCount}/${REQUIRED_DOC_KEYS.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { icon: TrendingUp, label: 'Profile Completion', value: `${profileCompletion}%`, color: 'text-gold-600', bg: 'bg-gold-50' },
           { icon: CalendarClock, label: 'Last Login', value: profile?.last_login ? new Date(profile.last_login).toLocaleDateString() : 'Today', color: 'text-violet-600', bg: 'bg-violet-50' },
-        ].map((s, i) => (
+        ].map((s) => (
           <GlassCard key={s.label} className="animate-fade-in" >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center flex-shrink-0`}>
@@ -240,7 +331,11 @@ export function DashboardPage({ onNavigate }: Props) {
           <GlassCard>
             <h3 className="font-display font-bold text-lg text-ocean-900 mb-5">Application Progress</h3>
             {application ? (
-              <ApplicationTimeline currentStep={application.current_step} hasDocuments={docCount > 0} />
+              <ApplicationTimeline
+                currentStep={application.current_step}
+                hasDocuments={requiredDocsComplete}
+                paymentStatus={paymentTimelineStatus}
+              />
             ) : (
               <div className="text-center py-8">
                 <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />

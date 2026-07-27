@@ -87,7 +87,7 @@ export function Footer({ onNavigate }: Props) {
             <ul className="space-y-3">
               <li className="flex items-start gap-3 text-sm text-ocean-300">
                 <MapPin className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span>Addis Ababa, Ethiopia<br />Bole Road, Africa Avenue</span>
+                <span>Dubai, United Arab Emirates<br />Office 1208, Marina Plaza Tower, Dubai Marina</span>
               </li>
               <li className="flex items-center gap-3 text-sm text-ocean-300">
                 <Phone className="w-4 h-4 text-gold-400 flex-shrink-0" />

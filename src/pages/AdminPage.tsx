@@ -54,6 +54,7 @@ interface AdminApp {
     experience_years: number;
   } | null;
   doc_count: number;
+  required_docs_done: number;
   documents: AdminDoc[];
   payments: AdminPayment[];
   payment_status: string | null;
@@ -117,6 +118,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
         ...a,
         profile: profileMap.get(a.user_id) ?? null,
         doc_count: docs.length,
+        required_docs_done: REQUIRED_DOC_KEYS.filter((k) => docs.some((d) => d.doc_type === k)).length,
         documents: docs,
         payments: pays,
         payment_status: pays[0]?.status ?? null,
@@ -331,7 +333,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                     <td className="px-3 py-3 hidden md:table-cell text-slate-600">{a.position ?? a.profile?.position ?? '—'}</td>
                     <td className="px-3 py-3 hidden lg:table-cell text-slate-600">{a.profile?.phone ?? '—'}</td>
                     <td className="px-3 py-3"><StatusBadge status={a.status as Status} size="sm" /></td>
-                    <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{a.doc_count}/{REQUIRED_DOC_KEYS.length}</td>
+                    <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{a.required_docs_done}/{REQUIRED_DOC_KEYS.length} <span className="text-slate-400">({a.doc_count} total)</span></td>
                     <td className="px-3 py-3 hidden md:table-cell">
                       {a.payment_status ? <StatusBadge status={a.payment_status as Status} size="sm" /> : <span className="text-xs text-slate-400">—</span>}
                     </td>
@@ -364,7 +366,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
               <InfoRow icon={Phone} label="Phone" value={selected.profile?.phone ?? '—'} />
               <InfoRow icon={Briefcase} label="Position" value={selected.position ?? selected.profile?.position ?? '—'} />
               <InfoRow icon={TrendingUp} label="Experience" value={`${selected.profile?.experience_years ?? 0} years`} />
-              <InfoRow icon={FileText} label="Documents" value={`${selected.doc_count}/${REQUIRED_DOC_KEYS.length} uploaded`} />
+              <InfoRow icon={FileText} label="Required Docs" value={`${selected.required_docs_done}/${REQUIRED_DOC_KEYS.length} (Passport + CV)`} />
               <InfoRow icon={Calendar} label="Applied" value={new Date(selected.submitted_at).toLocaleDateString()} />
             </div>
 

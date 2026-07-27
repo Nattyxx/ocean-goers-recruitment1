@@ -135,7 +135,7 @@ export function PaymentPage() {
           <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-amber-800">Upload all required documents first</p>
-            <p className="text-sm text-amber-600 mt-0.5">You must upload all {REQUIRED_DOC_KEYS.length} required documents before paying the registration fee.</p>
+            <p className="text-sm text-amber-600 mt-0.5">You must upload your Passport and CV/Resume before paying the registration fee.</p>
           </div>
         </div>
       )}

@@ -10,11 +10,9 @@ export const DOC_TYPES = [
   { key: 'receipt', label: 'Payment Receipt', icon: 'Receipt' },
 ] as const;
 
-// Verification documents required before the registration fee step.
-// The 'receipt' doc type is handled separately via the payments flow.
-export const REQUIRED_DOC_KEYS = DOC_TYPES
-  .filter((d) => d.key !== 'receipt')
-  .map((d) => d.key);
+// Documents required before the registration fee step.
+// Only passport and CV/resume are mandatory to proceed; other docs are optional.
+export const REQUIRED_DOC_KEYS = ['passport', 'cv'];
 
 export const APPLICATION_STEPS = [
   { key: 'account', label: 'Account Created', icon: 'UserCheck' },

@@ -263,7 +263,7 @@ export function DashboardPage({ onNavigate }: Props) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { icon: FileCheck, label: 'Applications Submitted', value: application ? '1' : '0', color: 'text-ocean-600', bg: 'bg-ocean-50' },
-          { icon: Upload, label: 'Documents Uploaded', value: `${docCount}/${REQUIRED_DOC_KEYS.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { icon: Upload, label: 'Required Documents', value: `${REQUIRED_DOC_KEYS.filter((k) => uploadedDocTypes.includes(k)).length}/${REQUIRED_DOC_KEYS.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { icon: TrendingUp, label: 'Profile Completion', value: `${profileCompletion}%`, color: 'text-gold-600', bg: 'bg-gold-50' },
           { icon: CalendarClock, label: 'Last Login', value: profile?.last_login ? new Date(profile.last_login).toLocaleDateString() : 'Today', color: 'text-violet-600', bg: 'bg-violet-50' },
         ].map((s) => (

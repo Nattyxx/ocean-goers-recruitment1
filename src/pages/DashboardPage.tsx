@@ -82,7 +82,7 @@ export function DashboardPage({ onNavigate }: Props) {
     setUploadingAvatar(true);
 
     const ext = file.name.split('.').pop();
-    const path = `avatars/${user.id}.${ext}`;
+    const path = `${user.id}/avatar.${ext}`;
 
     const { error: upErr } = await supabase.storage.from('documents').upload(path, file, { upsert: true });
     if (upErr) {

@@ -29,12 +29,23 @@ function AppContent() {
   const [statusOpen, setStatusOpen] = useState(false);
   const [isResetRoute, setIsResetRoute] = useState(false);
 
-  // Detect /reset-password path from the URL so the email reset link opens
-  // the ResetPassword page instead of a 404. Supabase puts the recovery token
-  // in the URL hash; the path itself is /reset-password.
+  // Detect the password-reset route. Supabase recovery links put type=recovery
+  // and the tokens in the URL hash. The path may be /reset-password (when the
+  // redirectTo URL is in Supabase's allowed list) or / (when Supabase falls back
+  // to the Site URL). We check both the path and the hash so the recovery flow
+  // works regardless of which URL Supabase generates.
   useEffect(() => {
     const path = window.location.pathname.replace(/\/$/, '');
-    if (path === '/reset-password') {
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+    const type = params.get('type');
+
+    if (type === 'recovery') {
+      if (path !== '/reset-password') {
+        window.history.replaceState({}, '', `/reset-password${window.location.hash}`);
+      }
+      setIsResetRoute(true);
+    } else if (path === '/reset-password') {
       setIsResetRoute(true);
     }
   }, []);

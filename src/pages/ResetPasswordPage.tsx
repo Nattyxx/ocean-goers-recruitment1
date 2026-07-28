@@ -24,55 +24,40 @@ export function ResetPasswordPage({ onComplete }: Props) {
     if (detectedRef.current) return;
     detectedRef.current = true;
 
-    let settled = false;
-    const settle = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
-      fn();
-    };
+    let cancelled = false;
 
-    // Supabase fires a PASSWORD_RECOVERY event via onAuthStateChange when the
-    // recovery token in the URL hash is processed. We also check the hash
-    // directly as a fallback in case the event already fired before we subscribed.
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
-    const type = params.get('type');
+    (async () => {
+      const hash = window.location.hash.slice(1);
+      const params = new URLSearchParams(hash);
+      const type = params.get('type');
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
 
-    if (type === 'recovery') {
-      // Token is present in the hash. Initialize the session so updateUser works.
-      supabase.auth.getSession().then(({ data, error }) => {
-        if (error) {
-          settle(() => {
-            setErrorMsg(error.message);
-            setPhase('error');
-          });
-          return;
+      if (type !== 'recovery' || !accessToken || !refreshToken) {
+        if (!cancelled) {
+          setErrorMsg('This password reset link is invalid or has expired. Please request a new reset link.');
+          setPhase('error');
         }
-        settle(() => setPhase('ready'));
-      });
-      return;
-    }
-
-    // No recovery token in the hash — listen for the PASSWORD_RECOVERY event
-    // in case onAuthStateChange processes it asynchronously.
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' && session) {
-        settle(() => setPhase('ready'));
+        return;
       }
-    });
 
-    // If nothing happens within a few seconds, the link is invalid or expired.
-    const timeout = setTimeout(() => {
-      settle(() => {
-        setErrorMsg('This password reset link is invalid or has expired. Please request a new reset link.');
-        setPhase('error');
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
       });
-    }, 5000);
 
-    return () => {
-      sub.subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
+      if (cancelled) return;
+
+      if (error) {
+        setErrorMsg(error.message);
+        setPhase('error');
+      } else {
+        window.history.replaceState({}, '', window.location.pathname);
+        setPhase('ready');
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

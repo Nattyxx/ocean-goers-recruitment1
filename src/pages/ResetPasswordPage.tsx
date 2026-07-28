@@ -24,32 +24,55 @@ export function ResetPasswordPage({ onComplete }: Props) {
     if (detectedRef.current) return;
     detectedRef.current = true;
 
-    (async () => {
-      // Supabase stores the recovery token in the URL hash. The client library
-      // auto-detects it on getSession / onAuthStateChange. We call getSession
-      // to initialize the recovery session, then verify it's a recovery flow.
-      const { data, error } = await supabase.auth.getSession();
+    let settled = false;
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      fn();
+    };
 
-      if (error) {
-        setErrorMsg(error.message);
-        setPhase('error');
-        return;
+    // Supabase fires a PASSWORD_RECOVERY event via onAuthStateChange when the
+    // recovery token in the URL hash is processed. We also check the hash
+    // directly as a fallback in case the event already fired before we subscribed.
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+    const type = params.get('type');
+
+    if (type === 'recovery') {
+      // Token is present in the hash. Initialize the session so updateUser works.
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error) {
+          settle(() => {
+            setErrorMsg(error.message);
+            setPhase('error');
+          });
+          return;
+        }
+        settle(() => setPhase('ready'));
+      });
+      return;
+    }
+
+    // No recovery token in the hash — listen for the PASSWORD_RECOVERY event
+    // in case onAuthStateChange processes it asynchronously.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) {
+        settle(() => setPhase('ready'));
       }
+    });
 
-      // Check the URL hash for type=recovery to confirm this is a password reset flow.
-      const hash = window.location.hash.slice(1);
-      const params = new URLSearchParams(hash);
-      const type = params.get('type');
-
-      if (!data.session && type !== 'recovery') {
+    // If nothing happens within a few seconds, the link is invalid or expired.
+    const timeout = setTimeout(() => {
+      settle(() => {
         setErrorMsg('This password reset link is invalid or has expired. Please request a new reset link.');
         setPhase('error');
-        return;
-      }
+      });
+    }, 5000);
 
-      // Valid recovery session detected
-      setPhase('ready');
-    })();
+    return () => {
+      sub.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

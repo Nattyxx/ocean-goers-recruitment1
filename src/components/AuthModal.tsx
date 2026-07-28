@@ -61,7 +61,7 @@ export function AuthModal({
       }
     } else {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://ocean-goers-recruitm-hblk.bolt.host/reset-password',
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) {
         toast(error.message, 'error');

@@ -1,9 +1,15 @@
 import { GlassCard } from '../components/ui/GlassCard';
-import { Ship, Target, Eye, Heart, Award, Users, Globe2, Briefcase, Mail, Phone, MapPin, Send, MessageCircle, LifeBuoy, Settings as SettingsIcon, Bell, Shield, Lock, User } from 'lucide-react';
+import { Ship, Target, Eye, Heart, Award, Users, Globe2, Briefcase, Mail, Phone, MapPin, Send, MessageCircle, LifeBuoy, Settings as SettingsIcon, Bell, Shield, Lock, User, Clock, Navigation, ArrowUpRight } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+
+const WHATSAPP_LINK = 'https://wa.me/971588576150?text=Hello%20Ocean%20Goers,%20I%20would%20like%20to%20apply%20for%20a%20cruise%20ship%20job.%20Please%20provide%20me%20with%20more%20information.%20Thank%20you.';
+const PHONE_LINK = 'tel:+971588576150';
+const EMAIL_LINK = 'mailto:info@oceangoers.com';
+const MAPS_LINK = 'https://www.google.com/maps/search/?api=1&query=Office%201208%2C%20Marina%20Plaza%20Tower%2C%20Dubai%20Marina%2C%20Dubai%2C%20United%20Arab%20Emirates';
+const MAPS_EMBED = 'https://www.google.com/maps?q=Office%201208%2C%20Marina%20Plaza%20Tower%2C%20Dubai%20Marina%2C%20Dubai%2C%20United%20Arab%20Emirates&output=embed';
 
 export function AboutPage() {
   return (
@@ -54,68 +60,126 @@ export function AboutPage() {
 }
 
 export function ContactPage() {
-  const { toast } = useToast();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const contactCards = [
+    {
+      icon: MapPin,
+      title: 'Office',
+      lines: ['Dubai, United Arab Emirates', 'Office 1208, Marina Plaza Tower, Dubai Marina'],
+      href: MAPS_LINK,
+      accent: 'from-ocean-500 to-ocean-700',
+    },
+    {
+      icon: Phone,
+      title: 'Phone',
+      lines: ['+971 58 857 6150'],
+      href: PHONE_LINK,
+      accent: 'from-emerald-500 to-emerald-700',
+    },
+    {
+      icon: Mail,
+      title: 'Email',
+      lines: ['info@oceangoers.com'],
+      href: EMAIL_LINK,
+      accent: 'from-gold-400 to-gold-600',
+    },
+    {
+      icon: MessageCircle,
+      title: 'WhatsApp',
+      lines: ['+971 58 857 6150'],
+      href: WHATSAPP_LINK,
+      accent: 'from-green-500 to-green-700',
+    },
+    {
+      icon: Clock,
+      title: 'Working Hours',
+      lines: ['Mon–Fri: 8:30 AM – 5:30 PM', 'Saturday: 9:00 AM – 1:00 PM', 'Sunday: Closed'],
+      href: null,
+      accent: 'from-slate-500 to-slate-700',
+    },
+  ];
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      toast('Message sent! We\'ll get back to you within 24 hours.', 'success');
-      setName(''); setEmail(''); setMessage('');
-    }, 1200);
-  };
+  const actionButtons = [
+    { icon: Phone, label: 'Call Us', href: PHONE_LINK, bg: 'bg-ocean-600 hover:bg-ocean-700' },
+    { icon: MessageCircle, label: 'Chat on WhatsApp', href: WHATSAPP_LINK, bg: 'bg-green-600 hover:bg-green-700' },
+    { icon: Mail, label: 'Send Email', href: EMAIL_LINK, bg: 'bg-gold-500 hover:bg-gold-600' },
+    { icon: Navigation, label: 'Get Directions', href: MAPS_LINK, bg: 'bg-slate-700 hover:bg-slate-800' },
+  ];
 
   return (
-    <div className="pt-20 pb-12 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
-      <div className="text-center mb-10">
-        <h1 className="font-display font-bold text-4xl text-ocean-900 mb-3">Get in Touch</h1>
-        <p className="text-slate-600">Have questions about cruise ship jobs? We&apos;re here to help.</p>
+    <div className="pt-20 pb-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ocean-100 text-ocean-700 text-xs font-semibold tracking-wide uppercase mb-4">
+          <Mail className="w-3.5 h-3.5" /> Contact
+        </span>
+        <h1 className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl text-ocean-900 mb-3">Contact Us</h1>
+        <p className="text-slate-600 text-base sm:text-lg max-w-xl mx-auto">
+          We&apos;re here to help you start your cruise ship career.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <GlassCard>
-          <h3 className="font-display font-semibold text-lg text-ocean-900 mb-4">Send a Message</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="Your name" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email</label>
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field" placeholder="you@example.com" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Message</label>
-              <textarea required value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="input-field resize-none" placeholder="Your message..." />
-            </div>
-            <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-60">
-              {loading ? 'Sending...' : <>Send Message <Send className="w-4 h-4" /></>}
-            </button>
-          </form>
-        </GlassCard>
+      {/* Contact cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+        {contactCards.map((c, i) => {
+          const Wrapper = c.href ? 'a' : 'div';
+          return (
+            <Wrapper
+              key={c.title}
+              {...(c.href ? { href: c.href, target: c.href.startsWith('http') ? '_blank' : undefined, rel: c.href.startsWith('http') ? 'noopener noreferrer' : undefined } : {})}
+              className="group block bg-white rounded-2xl p-6 shadow-[0_2px_12px_rgba(15,42,76,0.06)] hover:shadow-[0_12px_40px_rgba(15,42,76,0.12)] border border-slate-100 hover:border-ocean-200 hover:-translate-y-1 transition-all duration-300 animate-fade-in"
+              style={{ animationDelay: `${i * 0.08}s` }}
+            >
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${c.accent} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                  <c.icon className="w-6 h-6 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display font-semibold text-base text-ocean-900 mb-1.5">{c.title}</h3>
+                  {c.lines.map((line, idx) => (
+                    <p key={idx} className={`text-sm leading-relaxed ${idx === 0 ? 'text-slate-700 font-medium' : 'text-slate-500'}`}>{line}</p>
+                  ))}
+                </div>
+                {c.href && (
+                  <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-ocean-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300 flex-shrink-0" />
+                )}
+              </div>
+            </Wrapper>
+          );
+        })}
+      </div>
 
-        <div className="space-y-4">
-          {[
-            { icon: MapPin, title: 'Office', text: 'Bole Road, Africa Avenue, Addis Ababa, Ethiopia' },
-            { icon: Phone, title: 'Phone', text: '+251 954 785 794' },
-            { icon: Mail, title: 'Email', text: 'info@oceangoers.com' },
-            { icon: MessageCircle, title: 'WhatsApp', text: '+251 911 234 567' },
-          ].map((c) => (
-            <GlassCard key={c.title} className="flex items-start gap-4">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-ocean-500 to-ocean-700 flex items-center justify-center flex-shrink-0">
-                <c.icon className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h4 className="font-display font-semibold text-ocean-900">{c.title}</h4>
-                <p className="text-sm text-slate-600">{c.text}</p>
-              </div>
-            </GlassCard>
-          ))}
+      {/* Action buttons */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+        {actionButtons.map((btn, i) => (
+          <a
+            key={btn.label}
+            href={btn.href}
+            target={btn.href.startsWith('http') ? '_blank' : undefined}
+            rel={btn.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+            className={`group flex items-center justify-center gap-2.5 ${btn.bg} text-white font-medium text-sm px-5 py-4 rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 animate-fade-in`}
+            style={{ animationDelay: `${0.3 + i * 0.08}s` }}
+          >
+            <btn.icon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span>{btn.label}</span>
+          </a>
+        ))}
+      </div>
+
+      {/* Map */}
+      <div className="rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+        <div className="flex items-center gap-2 px-5 py-3 bg-ocean-800 text-white">
+          <MapPin className="w-4 h-4 text-gold-400" />
+          <span className="text-sm font-medium">Office 1208, Marina Plaza Tower, Dubai Marina, Dubai, UAE</span>
+        </div>
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            src={MAPS_EMBED}
+            title="Ocean Goers Office Location"
+            className="absolute inset-0 w-full h-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
         </div>
       </div>
     </div>

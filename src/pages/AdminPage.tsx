@@ -139,6 +139,13 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setLoading(false);
   }, [toast]);
 
+  const loadEmailLogs = useCallback(async () => {
+    setEmailLogLoading(true);
+    const logs = await fetchEmailLogs();
+    setEmailLogs(logs);
+    setEmailLogLoading(false);
+  }, []);
+
   useEffect(() => {
     if (profile?.is_admin) { loadApps(); loadEmailLogs(); }
     else setLoading(false);
@@ -296,13 +303,6 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     }
     setActionLoading(false);
   };
-
-  const loadEmailLogs = useCallback(async () => {
-    setEmailLogLoading(true);
-    const logs = await fetchEmailLogs();
-    setEmailLogs(logs);
-    setEmailLogLoading(false);
-  }, []);
 
   const handleResend = async (logId: string) => {
     setResendingId(logId);

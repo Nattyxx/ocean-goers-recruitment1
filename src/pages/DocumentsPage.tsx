@@ -10,7 +10,8 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
-import { DOC_TYPES } from '../lib/constants';
+import { DOC_TYPES, REQUIRED_DOC_KEYS } from '../lib/constants';
+import { sendNotificationEmail, hasEmailBeenSent } from '../lib/email';
 
 const icons: Record<string, typeof FileText> = {
   BookUser, FileText, HeartPulse, BookOpen, Award, ShieldCheck, GraduationCap, Image, Receipt,
@@ -108,6 +109,29 @@ export function DocumentsPage() {
     } else {
       toast(`${DOC_TYPES.find((d) => d.key === docType)?.label} uploaded successfully!`, 'success');
       await loadDocs();
+
+      const updatedDocTypes = [...new Set([...docs.map((d) => d.doc_type), docType])];
+      const allRequiredDone = REQUIRED_DOC_KEYS.every((k) => updatedDocTypes.includes(k));
+      if (allRequiredDone && user) {
+        const alreadySent = await hasEmailBeenSent(user.id, 'payment_required');
+        if (!alreadySent) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (prof?.email) {
+            await sendNotificationEmail({
+              userId: user.id,
+              emailTo: prof.email,
+              recipientName: prof.full_name ?? 'Applicant',
+              emailType: 'payment_required',
+              subject: 'Registration Payment Required',
+              bodyHtml: `Your documents have been received successfully.<br><br>Please log in to your account to view the registration payment instructions and complete your payment.<br><br>After payment, upload your payment receipt for verification.`,
+            }).catch(() => {});
+          }
+        }
+      }
     }
 
     setTimeout(() => {

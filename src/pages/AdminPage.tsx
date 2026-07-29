@@ -3,6 +3,7 @@ import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
   Download, ExternalLink, Loader2, ArrowRightCircle, CreditCard, Receipt,
+  Send, MailCheck, RotateCw, History,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -13,6 +14,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
 import { STATUSES, DOC_TYPES, APPLICATION_STEPS, REQUIRED_DOC_KEYS } from '../lib/constants';
+import { sendNotificationEmail, fetchEmailLogs, resendEmail, EMAIL_LABELS, type EmailLogRow } from '../lib/email';
 
 type Status = typeof STATUSES[number] | 'Verified';
 
@@ -73,6 +75,14 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectModal, setRejectModal] = useState<AdminApp | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [interviewModal, setInterviewModal] = useState<AdminApp | null>(null);
+  const [interviewDate, setInterviewDate] = useState('');
+  const [interviewTime, setInterviewTime] = useState('');
+  const [interviewLocation, setInterviewLocation] = useState('');
+  const [interviewNotes, setInterviewNotes] = useState('');
+  const [emailLogs, setEmailLogs] = useState<EmailLogRow[]>([]);
+  const [emailLogLoading, setEmailLogLoading] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const loadApps = useCallback(async () => {
     setLoading(true);
@@ -130,9 +140,9 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   }, [toast]);
 
   useEffect(() => {
-    if (profile?.is_admin) loadApps();
+    if (profile?.is_admin) { loadApps(); loadEmailLogs(); }
     else setLoading(false);
-  }, [profile, loadApps]);
+  }, [profile, loadApps, loadEmailLogs]);
 
   const filtered = useMemo(() => {
     return apps.filter((a) => {
@@ -167,6 +177,25 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
       toast(`Application ${status.toLowerCase()}.`, 'success');
       setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status, current_step: step } : a)));
       if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status, current_step: step } : prev);
+
+      const app = apps.find((a) => a.id === id);
+      if (app?.profile?.email) {
+        if (status === 'Approved') {
+          const res = await sendNotificationEmail({
+            userId: app.user_id, emailTo: app.profile.email, recipientName: app.profile.full_name ?? 'Applicant',
+            emailType: 'application_approved', subject: 'Congratulations! Your Application Has Been Approved',
+            bodyHtml: `Congratulations!<br><br>Your application has been approved.<br>Our recruitment team will contact you with the next steps regarding interviews, training, medical examinations, documentation, or deployment.<br><br>Please continue checking your dashboard regularly.`,
+          });
+          if (res.success) toast('Approval email sent.', 'success');
+        } else if (status === 'Rejected') {
+          const res = await sendNotificationEmail({
+            userId: app.user_id, emailTo: app.profile.email, recipientName: app.profile.full_name ?? 'Applicant',
+            emailType: 'application_rejected', subject: 'Application Status Update',
+            bodyHtml: `Thank you for applying through Ocean Goers Cruise Ship Recruitment Agency.<br><br>After carefully reviewing your application, we are unable to continue with your application at this time.<br>We appreciate your interest and encourage you to apply again in the future if you meet the required qualifications.`,
+          });
+          if (res.success) toast('Rejection email sent.', 'success');
+        }
+      }
     }
     setActionLoading(false);
   };
@@ -203,6 +232,15 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
       message: `Your registration fee payment of ${payment.amount.toLocaleString()} ${payment.currency} has been verified. Your application is now under review.`,
     });
 
+    if (app.profile?.email) {
+      const res = await sendNotificationEmail({
+        userId: app.user_id, emailTo: app.profile.email, recipientName: app.profile.full_name ?? 'Applicant',
+        emailType: 'payment_confirmed', subject: 'Payment Confirmed',
+        bodyHtml: `Your registration payment has been verified successfully.<br><br>Your application will now continue to the next stage of the recruitment process.<br><br>Thank you.`,
+      });
+      if (res.success) toast('Payment confirmation email sent.', 'success');
+    }
+
     toast('Payment verified. Applicant notified.', 'success');
     setApps((prev) => prev.map((a) => a.id === app.id ? { ...a, payment_status: 'Verified', status: newStatus, current_step: newStep, payments: a.payments.map((p) => p.id === payment.id ? { ...p, status: 'Verified' } : p) } : a));
     if (selected?.id === app.id) setSelected((prev) => prev ? { ...prev, payment_status: 'Verified', status: newStatus, current_step: newStep, payments: prev.payments.map((p) => p.id === payment.id ? { ...p, status: 'Verified' } : p) } : prev);
@@ -230,6 +268,52 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setRejectModal(null);
     setRejectReason('');
     setActionLoading(false);
+  };
+
+  const sendInterviewInvitation = async () => {
+    if (!interviewModal?.profile?.email) { toast('Applicant email not found.', 'error'); return; }
+    if (!interviewDate || !interviewTime || !interviewLocation) { toast('Please fill in date, time, and location.', 'error'); return; }
+    setActionLoading(true);
+
+    const res = await sendNotificationEmail({
+      userId: interviewModal.user_id, emailTo: interviewModal.profile.email, recipientName: interviewModal.profile.full_name ?? 'Applicant',
+      emailType: 'interview_invitation', subject: 'Interview Invitation – Ocean Goers',
+      bodyHtml: `Congratulations!<br><br>You have been invited for an interview.<br><br><strong>Interview Date:</strong> ${interviewDate}<br><strong>Interview Time:</strong> ${interviewTime}<br><strong>Location/Meeting Link:</strong> ${interviewLocation}<br><br><strong>Additional Notes:</strong> ${interviewNotes || 'None'}<br><br>Please arrive on time and bring any requested documents.`,
+      metadata: { date: interviewDate, time: interviewTime, location: interviewLocation, notes: interviewNotes },
+      forceResend: true,
+    });
+
+    if (res.success) {
+      toast('Interview invitation sent.', 'success');
+      await supabase.from('notifications').insert({
+        user_id: interviewModal.user_id, type: 'interview', title: 'Interview Invitation',
+        message: `You have been invited for an interview on ${interviewDate} at ${interviewTime}. Location: ${interviewLocation}`,
+      });
+      setInterviewModal(null);
+      setInterviewDate(''); setInterviewTime(''); setInterviewLocation(''); setInterviewNotes('');
+    } else {
+      toast(res.error ?? 'Failed to send interview invitation.', 'error');
+    }
+    setActionLoading(false);
+  };
+
+  const loadEmailLogs = useCallback(async () => {
+    setEmailLogLoading(true);
+    const logs = await fetchEmailLogs();
+    setEmailLogs(logs);
+    setEmailLogLoading(false);
+  }, []);
+
+  const handleResend = async (logId: string) => {
+    setResendingId(logId);
+    const res = await resendEmail(logId);
+    if (res.success) {
+      toast('Email resent successfully.', 'success');
+      await loadEmailLogs();
+    } else {
+      toast(res.error ?? 'Failed to resend email.', 'error');
+    }
+    setResendingId(null);
   };
 
   if (!profile?.is_admin) {
@@ -343,6 +427,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                         <button onClick={() => setSelected(a)} className="p-2 rounded-lg text-ocean-600 hover:bg-ocean-50 transition-colors" title="View details"><Eye className="w-4 h-4" /></button>
                         <button onClick={() => advanceStage(a.id, a.current_step)} disabled={actionLoading || a.current_step >= 10} className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" title="Next Stage"><ArrowRightCircle className="w-4 h-4" /></button>
                         <button onClick={() => updateStatus(a.id, 'Rejected', a.current_step)} disabled={actionLoading || a.status === 'Rejected'} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40" title="Reject"><XCircle className="w-4 h-4" /></button>
+                        <button onClick={() => { setInterviewModal(a); setInterviewDate(''); setInterviewTime(''); setInterviewLocation(''); setInterviewNotes(''); }} className="p-2 rounded-lg text-sky-600 hover:bg-sky-50 transition-colors" title="Interview Invitation"><Send className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -391,6 +476,87 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
           </div>
         )}
       </Modal>
+
+      {/* Interview invitation modal */}
+      <Modal open={!!interviewModal} onClose={() => setInterviewModal(null)} title="Send Interview Invitation" maxWidth="max-w-md">
+        {interviewModal && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">Send an interview invitation to <strong>{interviewModal.profile?.full_name ?? 'this applicant'}</strong> ({interviewModal.profile?.email}).</p>
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Interview Date</label>
+              <input type="date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Interview Time</label>
+              <input type="time" value={interviewTime} onChange={(e) => setInterviewTime(e.target.value)} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Location / Meeting Link</label>
+              <input type="text" value={interviewLocation} onChange={(e) => setInterviewLocation(e.target.value)} placeholder="e.g. Office address or Zoom link" className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Additional Notes</label>
+              <textarea value={interviewNotes} onChange={(e) => setInterviewNotes(e.target.value)} placeholder="Any extra instructions..." rows={3} className="input-field resize-none" />
+            </div>
+            <button onClick={sendInterviewInvitation} disabled={actionLoading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50">
+              {actionLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending...</> : <><Send className="w-4 h-4" /> Send Invitation</>}
+            </button>
+          </div>
+        )}
+      </Modal>
+
+      {/* Email History section */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display font-bold text-xl text-ocean-900 flex items-center gap-2"><History className="w-5 h-5 text-ocean-600" /> Email History</h2>
+          <button onClick={loadEmailLogs} className="btn-ghost text-sm">Refresh</button>
+        </div>
+        <GlassCard>
+          {emailLogLoading ? (
+            <div className="flex items-center justify-center py-8"><Spinner size={36} className="text-ocean-600" /></div>
+          ) : emailLogs.length === 0 ? (
+            <div className="text-center py-10">
+              <MailCheck className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500">No emails sent yet.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-2">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-3 py-3 font-semibold">Recipient</th>
+                    <th className="px-3 py-3 font-semibold hidden sm:table-cell">Email</th>
+                    <th className="px-3 py-3 font-semibold">Type</th>
+                    <th className="px-3 py-3 font-semibold hidden md:table-cell">Date</th>
+                    <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {emailLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-3 font-medium text-ocean-900">{log.recipient_name ?? '—'}</td>
+                      <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{log.email_to}</td>
+                      <td className="px-3 py-3 text-slate-600">{EMAIL_LABELS[log.email_type] ?? log.email_type}</td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-500 text-xs">{new Date(log.sent_at).toLocaleString()}</td>
+                      <td className="px-3 py-3">
+                        {log.status === 'sent'
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full"><CheckCircle2 className="w-3 h-3" /> Sent</span>
+                          : <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-1 rounded-full"><XCircle className="w-3 h-3" /> Failed</span>}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <button onClick={() => handleResend(log.id)} disabled={resendingId === log.id} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-ocean-50 text-ocean-700 text-xs font-medium hover:bg-ocean-100 transition-colors disabled:opacity-50">
+                          {resendingId === log.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />} Resend
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </GlassCard>
+      </div>
 
       {/* Reject payment modal */}
       <Modal open={!!rejectModal} onClose={() => setRejectModal(null)} title="Reject Payment Receipt" maxWidth="max-w-md">

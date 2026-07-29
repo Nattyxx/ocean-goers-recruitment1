@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
 import { POSITIONS, CRUISE_LINES } from '../lib/constants';
+import { sendNotificationEmail } from '../lib/email';
 
 export function ApplyModal({
   open,
@@ -68,6 +69,15 @@ export function ApplyModal({
       title: 'Application Submitted',
       message: `Your application for ${position} has been received. We'll review it shortly.`,
     });
+
+    await sendNotificationEmail({
+      userId: user.id,
+      emailTo: email,
+      recipientName: fullName,
+      emailType: 'application_submitted',
+      subject: 'Application Received – Ocean Goers',
+      bodyHtml: `Thank you for applying through Ocean Goers Cruise Ship Recruitment Agency.<br><br>We have successfully received your application and documents.<br>Your application is now under review.<br><br>You can log in to your account at any time to check your application status.`,
+    }).catch(() => {});
 
     await supabase.from('profiles').upsert({
       id: user.id,

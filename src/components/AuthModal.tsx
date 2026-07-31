@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, MailCheck } from 'lucide-react';
+import { Ship, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Spinner } from './ui/Spinner';
+import { EmailVerificationModal } from './EmailVerificationModal';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
 
 type Mode = 'login' | 'signup' | 'reset';
+
+const VERIFY_URL = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/verify-email`;
 
 export function AuthModal({
   open,
@@ -19,7 +22,7 @@ export function AuthModal({
   initialMode?: Mode;
   onGotoDashboard?: () => void;
 }) {
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const { toast } = useToast();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
@@ -27,7 +30,11 @@ export function AuthModal({
   const [fullName, setFullName] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [confirmationMsg, setConfirmationMsg] = useState(false);
+
+  // Verification step state
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
+  const [showVerify, setShowVerify] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,20 +51,31 @@ export function AuthModal({
       }
     } else if (mode === 'signup') {
       if (password.length < 8) {
-        toast('Password is too weak. It must be at least 8 characters long.', 'error');
+        toast('Password must be at least 8 characters long.', 'error');
         setLoading(false);
         return;
       }
-      const { error, needsConfirmation } = await signUp(email, password, fullName);
-      if (error) {
-        toast(error, 'error');
-      } else if (needsConfirmation) {
-        setConfirmationMsg(true);
-      } else {
-        toast('Account created! You are now logged in.', 'success');
-        onClose();
-        reset();
-        onGotoDashboard?.();
+
+      // Call the verify-email edge function to start the OTP flow
+      try {
+        const res = await fetch(VERIFY_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ action: 'initiate', email, fullName, password }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          toast(data.error ?? 'Could not send verification email. Please try again.', 'error');
+        } else {
+          setPendingEmail(email);
+          setPendingPassword(password);
+          setShowVerify(true);
+        }
+      } catch {
+        toast('Network error. Please check your connection and try again.', 'error');
       }
     } else {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -77,178 +95,178 @@ export function AuthModal({
     setEmail('');
     setPassword('');
     setFullName('');
-    setConfirmationMsg(false);
+    setPendingEmail('');
+    setPendingPassword('');
   };
 
   const switchMode = (m: Mode) => {
     setMode(m);
     setShowPw(false);
-    setConfirmationMsg(false);
+  };
+
+  // Called when the verification modal confirms the account is created
+  const handleVerified = async () => {
+    setShowVerify(false);
+    // Sign them in with the stored credentials
+    const { error } = await signIn(pendingEmail, pendingPassword);
+    if (error) {
+      toast('Account created! Please sign in.', 'success');
+      reset();
+      switchMode('login');
+    } else {
+      toast('Account created and signed in!', 'success');
+      onClose();
+      reset();
+      onGotoDashboard?.();
+    }
   };
 
   return (
-    <Modal open={open} onClose={onClose} maxWidth="max-w-md">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-ocean-600 to-ocean-800 shadow-lg mb-3">
-          <Ship className="w-7 h-7 text-gold-400" />
-        </div>
-        <h2 className="font-display font-bold text-2xl text-ocean-900">
-          {confirmationMsg ? 'Check Your Email' : mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join Ocean Goers' : 'Reset Password'}
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          {confirmationMsg
-            ? 'Your account has been created successfully. Please verify your email to activate your account.'
-            : mode === 'login'
-            ? 'Sign in to your recruitment portal'
-            : mode === 'signup'
-            ? 'Start your cruise ship career journey'
-            : 'Enter your email to receive a reset link'}
-        </p>
-      </div>
-
-      {confirmationMsg ? (
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-ocean-50 border border-ocean-100">
-            <MailCheck className="w-5 h-5 text-ocean-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-ocean-700">
-              We&apos;ve sent a verification link to <span className="font-semibold">{email}</span>. Click the link in the email to activate your account, then sign in.
-            </p>
+    <>
+      <Modal open={open} onClose={onClose} maxWidth="max-w-md">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-ocean-600 to-ocean-800 shadow-lg mb-3">
+            <Ship className="w-7 h-7 text-gold-400" />
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              reset();
-              switchMode('login');
-            }}
-            className="btn-gold w-full flex items-center justify-center gap-2"
-          >
-            Got it <ArrowRight className="w-4 h-4" />
-          </button>
+          <h2 className="font-display font-bold text-2xl text-ocean-900">
+            {mode === 'login' ? 'Welcome Back' : mode === 'signup' ? 'Join Ocean Goers' : 'Reset Password'}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {mode === 'login'
+              ? 'Sign in to your recruitment portal'
+              : mode === 'signup'
+              ? 'Start your cruise ship career journey'
+              : 'Enter your email to receive a reset link'}
+          </p>
         </div>
-      ) : (
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {mode === 'signup' && (
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Doe"
+                  className="input-field pl-11"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-ocean-700 mb-1.5">Full Name</label>
+            <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email Address</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
-                type="text"
+                type="email"
                 required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="John Doe"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
                 className="input-field pl-11"
               />
             </div>
           </div>
-        )}
 
-        <div>
-          <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email Address</label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="input-field pl-11"
-            />
-          </div>
-        </div>
-
-        {mode !== 'reset' && (
-          <div>
-            <label className="block text-sm font-medium text-ocean-700 mb-1.5">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type={showPw ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="input-field pl-11 pr-11"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((s) => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {mode === 'signup' && password.length > 0 && (
-              <div className="mt-2 flex items-center gap-1.5 text-sm">
-                {password.length >= 8 ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <span className="text-emerald-600 font-medium">Strong password</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <span className="text-red-500">Password is too weak. It must be at least 8 characters long.</span>
-                  </>
-                )}
+          {mode !== 'reset' && (
+            <div>
+              <label className="block text-sm font-medium text-ocean-700 mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="input-field pl-11 pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
-            )}
-          </div>
-        )}
+              {mode === 'signup' && password.length > 0 && (
+                <div className="mt-2 flex items-center gap-1.5 text-sm">
+                  {password.length >= 8 ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      <span className="text-emerald-600 font-medium">Strong password</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                      <span className="text-red-500">Password must be at least 8 characters long.</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-        <button
-          type="submit"
-          disabled={loading || (mode === 'signup' && password.length < 8)}
-          className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <Spinner size={20} className="text-ocean-900" />
-          ) : (
+          <button
+            type="submit"
+            disabled={loading || (mode === 'signup' && password.length < 8)}
+            className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <Spinner size={20} className="text-ocean-900" />
+            ) : (
+              <>
+                {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Send Verification Code' : 'Send Reset Link'}
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-5 text-center text-sm text-slate-500">
+          {mode === 'login' && (
             <>
-              {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
-              <ArrowRight className="w-4 h-4" />
+              <button onClick={() => switchMode('reset')} className="text-ocean-600 hover:text-ocean-700 font-medium">
+                Forgot password?
+              </button>
+              <p className="mt-3">
+                Don&apos;t have an account?{' '}
+                <button onClick={() => switchMode('signup')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
+                  Sign up
+                </button>
+              </p>
             </>
           )}
-        </button>
-      </form>
-      )}
-
-      {!confirmationMsg && (
-      <div className="mt-5 text-center text-sm text-slate-500">
-        {mode === 'login' && (
-          <>
-            <button onClick={() => switchMode('reset')} className="text-ocean-600 hover:text-ocean-700 font-medium">
-              Forgot password?
-            </button>
-            <p className="mt-3">
-              Don&apos;t have an account?{' '}
-              <button onClick={() => switchMode('signup')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
-                Sign up
+          {mode === 'signup' && (
+            <p>
+              Already have an account?{' '}
+              <button onClick={() => switchMode('login')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
+                Sign in
               </button>
             </p>
-          </>
-        )}
-        {mode === 'signup' && (
-          <p>
-            Already have an account?{' '}
-            <button onClick={() => switchMode('login')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
-              Sign in
-            </button>
-          </p>
-        )}
-        {mode === 'reset' && (
-          <p>
-            Remember your password?{' '}
-            <button onClick={() => switchMode('login')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
-              Sign in
-            </button>
-          </p>
-        )}
-      </div>
-      )}
-    </Modal>
+          )}
+          {mode === 'reset' && (
+            <p>
+              Remember your password?{' '}
+              <button onClick={() => switchMode('login')} className="text-ocean-600 hover:text-ocean-700 font-semibold">
+                Sign in
+              </button>
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      <EmailVerificationModal
+        open={showVerify}
+        email={pendingEmail}
+        onSuccess={handleVerified}
+        onClose={() => setShowVerify(false)}
+      />
+    </>
   );
 }

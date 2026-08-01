@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06203c"/>
+      <stop offset="55%" stop-color="#0a3a5c"/>
+      <stop offset="100%" stop-color="#0f4c75"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a6ba0" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#1a6ba0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="600" cy="260" r="320" fill="url(#glow)"/>
+
+  <!-- decorative wave lines -->
+  <g stroke="#1a6ba0" stroke-width="2" fill="none" opacity="0.35">
+    <path d="M0 540 Q300 500 600 540 T1200 540"/>
+    <path d="M0 570 Q300 530 600 570 T1200 570"/>
+    <path d="M0 600 Q300 560 600 600 T1200 600"/>
+  </g>
+
+  <!-- logo emblem -->
+  <g transform="translate(600,210)">
+    <rect x="-58" y="-58" width="116" height="116" rx="26" fill="#0a2a4a" stroke="#facc15" stroke-width="2"/>
+    <g transform="translate(0,4)" fill="none" stroke="#facc15" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M0 -30 L0 8"/>
+      <path d="M-4 -30 L4 -30"/>
+      <path d="M0 -18 L20 -8 L0 8 L-20 -8 Z" fill="#facc15" stroke="none"/>
+      <path d="M-26 8 Q0 22 26 8 L21 17 Q0 26 -21 17 Z" fill="#facc15" stroke="none"/>
+    </g>
+  </g>
+
+  <!-- title -->
+  <text x="600" y="380" text-anchor="middle" font-family="Poppins, 'Segoe UI', sans-serif" font-size="64" font-weight="800" fill="#ffffff" letter-spacing="1">Ocean Goers</text>
+  <text x="600" y="430" text-anchor="middle" font-family="Inter, 'Segoe UI', sans-serif" font-size="26" font-weight="500" fill="#7ab8de" letter-spacing="4">CRUISE SHIP RECRUITMENT</text>
+
+  <!-- gold divider -->
+  <rect x="540" y="460" width="120" height="4" rx="2" fill="url(#gold)"/>
+
+  <!-- tagline -->
+  <text x="600" y="510" text-anchor="middle" font-family="Inter, 'Segoe UI', sans-serif" font-size="24" font-weight="400" fill="#b3d7ec">Apply for cruise ship jobs worldwide</text>
+</svg>

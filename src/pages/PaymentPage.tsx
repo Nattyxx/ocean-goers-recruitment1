@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw } from 'lucide-react';
+import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw, Bitcoin, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
@@ -8,6 +8,20 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { PAYMENT_METHODS, PAYMENT_ACCOUNTS, REQUIRED_DOC_KEYS } from '../lib/constants';
+
+interface CryptoPayment {
+  id: string;
+  order_id: string;
+  nowpayments_id: string | null;
+  amount: number;
+  currency: string;
+  pay_currency: string;
+  status: string;
+  payment_url: string | null;
+  transaction_hash: string | null;
+  payment_date: string | null;
+  created_at: string;
+}
 
 const accountIcons: Record<string, typeof Landmark> = { Landmark, Smartphone, Globe };
 
@@ -29,31 +43,49 @@ interface AppData {
 }
 
 export function PaymentPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [cryptoPayments, setCryptoPayments] = useState<CryptoPayment[]>([]);
   const [application, setApplication] = useState<AppData | null>(null);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [method, setMethod] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [cryptoLoading, setCryptoLoading] = useState(false);
+  const [cryptoSuccess, setCryptoSuccess] = useState(false);
+  const [cryptoError, setCryptoError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [payRes, appRes, docRes] = await Promise.all([
+    const [payRes, appRes, docRes, cryptoRes] = await Promise.all([
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('applications').select('id, current_step, status').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('documents').select('doc_type').eq('user_id', user.id),
+      supabase.from('crypto_payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
     setPayments((payRes.data as Payment[]) ?? []);
+    setCryptoPayments((cryptoRes.data as CryptoPayment[]) ?? []);
     setApplication(appRes.data as AppData | null);
     setDocTypes([...new Set((docRes.data ?? []).map((d) => (d as { doc_type: string }).doc_type))]);
     setLoading(false);
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cryptoParam = params.get('crypto');
+    if (cryptoParam === 'success') {
+      setCryptoSuccess(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (cryptoParam === 'cancel') {
+      setCryptoError('Payment was cancelled.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const requiredDocsComplete = REQUIRED_DOC_KEYS.every((k) => docTypes.includes(k));
   const latestPayment = payments[0] ?? null;
@@ -113,6 +145,9 @@ export function PaymentPage() {
     }
     setTimeout(() => { setUploading(false); setProgress(0); }, 600);
   };
+
+  const handleCryptoPay = () =>
+    handleCryptoPayImpl(user, profile, application, setCryptoLoading, setCryptoSuccess, setCryptoError, toast);
 
   if (loading) {
     return (
@@ -237,6 +272,97 @@ export function PaymentPage() {
         </div>
       </GlassCard>
 
+      {/* USDT (TRC20) Crypto Payment Card */}
+      <GlassCard className="mb-6 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
+          <div className="flex items-center gap-4 w-full">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+              <Bitcoin className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-display font-bold text-lg text-ocean-900">Pay with USDT (TRC20)</h3>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 border border-teal-200 text-xs font-semibold text-teal-700">
+                  TRON Network
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">Secure international cryptocurrency payment. Fast confirmation with low network fees.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Amount</p>
+            <p className="font-display font-bold text-lg text-ocean-900 mt-0.5">$90 USD</p>
+            <p className="text-xs text-slate-500">Registration Fee</p>
+          </div>
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs text-slate-400 uppercase tracking-wide">Network</p>
+            <p className="font-display font-bold text-lg text-ocean-900 mt-0.5">TRON (TRC20)</p>
+            <p className="text-xs text-slate-500">USDT Tether</p>
+          </div>
+          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+            <p className="text-xs text-emerald-400 uppercase tracking-wide">Status</p>
+            <p className="font-display font-bold text-lg text-emerald-700 mt-0.5 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4" /> Secure Payment
+            </p>
+            <p className="text-xs text-emerald-600">Encrypted & Verified</p>
+          </div>
+        </div>
+
+        {cryptoSuccess && (
+          <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3 animate-scale-in">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-emerald-800">Payment received successfully. Your registration has been confirmed.</p>
+              <p className="text-sm text-emerald-600 mt-0.5">Your application is now under review.</p>
+            </div>
+          </div>
+        )}
+
+        {cryptoError && (
+          <div className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 animate-scale-in">
+            <XCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-rose-800">Payment failed or expired.</p>
+              <p className="text-sm text-rose-600 mt-0.5">{cryptoError}</p>
+              <button
+                onClick={() => { setCryptoError(null); }}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" /> Try Again
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cryptoLoading ? (
+          <div className="mt-5 flex flex-col items-center justify-center py-6">
+            <Loader2 className="w-8 h-8 text-gold-500 animate-spin mb-3" />
+            <p className="text-sm text-slate-500">Creating your USDT payment...</p>
+          </div>
+        ) : (
+          !cryptoSuccess && (
+            <button
+              onClick={handleCryptoPay}
+              disabled={!requiredDocsComplete || !application}
+              className="mt-5 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-ocean-900 font-display font-bold text-base hover:from-gold-500 hover:to-gold-600 transition-all duration-300 hover:shadow-lg hover:shadow-gold-300/50 disabled:opacity-50 disabled:cursor-not-allowed group"
+            >
+              <Bitcoin className="w-5 h-5" />
+              Pay $90 with USDT
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          )
+        )}
+
+        {!requiredDocsComplete && (
+          <p className="mt-3 text-xs text-amber-600 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" /> Upload all required documents first to enable crypto payment.
+          </p>
+        )}
+      </GlassCard>
+
       {/* Upload receipt */}
       <GlassCard className="mb-6">
         <h3 className="font-display font-semibold text-lg text-ocean-900 mb-2">Upload Payment Receipt</h3>
@@ -305,6 +431,30 @@ export function PaymentPage() {
         />
       </GlassCard>
 
+      {/* Crypto payment history */}
+      {cryptoPayments.length > 0 && (
+        <>
+          <h3 className="font-display font-semibold text-lg text-ocean-900 mb-4 mt-6">Crypto Payment History</h3>
+          <div className="space-y-3 mb-6">
+            {cryptoPayments.map((cp) => (
+              <GlassCard key={cp.id} className="flex items-center gap-4 animate-fade-in">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                  <Bitcoin className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-ocean-900">${cp.amount} {cp.currency}</p>
+                  <p className="text-xs text-slate-500">USDT (TRC20) · {new Date(cp.created_at).toLocaleDateString()}</p>
+                  {cp.transaction_hash && (
+                    <p className="text-xs text-slate-400 font-mono mt-0.5 truncate">TX: {cp.transaction_hash.slice(0, 20)}...</p>
+                  )}
+                </div>
+                <CryptoStatusBadge status={cp.status} />
+              </GlassCard>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Payment history */}
       <h3 className="font-display font-semibold text-lg text-ocean-900 mb-4">Payment History</h3>
       {payments.length === 0 ? (
@@ -336,4 +486,70 @@ export function PaymentPage() {
       )}
     </div>
   );
+}
+
+function CryptoStatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  if (s === 'confirmed' || s === 'finished') {
+    return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Paid</span>;
+  }
+  if (s === 'failed' || s === 'expired' || s === 'refunded') {
+    return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"><XCircle className="w-3 h-3" /> Failed</span>;
+  }
+  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><Loader2 className="w-3 h-3 animate-spin" /> Pending</span>;
+}
+
+async function handleCryptoPayImpl(
+  user: { id: string } | null,
+  profile: { full_name: string | null } | null,
+  application: AppData | null,
+  setCryptoLoading: (v: boolean) => void,
+  setCryptoSuccess: (v: boolean) => void,
+  setCryptoError: (v: string | null) => void,
+  toast: (msg: string, type: 'success' | 'error' | 'warning' | 'info') => void,
+) {
+  if (!user || !application) {
+    toast('Application not found. Please submit an application first.', 'warning');
+    return;
+  }
+
+  setCryptoLoading(true);
+  setCryptoError(null);
+  setCryptoSuccess(false);
+
+  try {
+    const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/nowpayments-create`;
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        userId: user.id,
+        applicantName: profile?.full_name ?? 'Applicant',
+        email: (user as { email?: string }).email ?? '',
+        applicationId: application.id,
+      }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error ?? `Request failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data.success || !data.paymentUrl) {
+      throw new Error(data.error ?? 'Failed to create payment');
+    }
+
+    toast('Redirecting to NOWPayments...', 'success');
+    window.location.href = data.paymentUrl;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to create crypto payment';
+    setCryptoError(msg);
+    toast(msg, 'error');
+  } finally {
+    setCryptoLoading(false);
+  }
 }

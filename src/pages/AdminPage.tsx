@@ -3,7 +3,7 @@ import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
   Download, ExternalLink, Loader2, ArrowRightCircle, CreditCard, Receipt,
-  Send, MailCheck, RotateCw, History,
+  Send, MailCheck, RotateCw, History, Bitcoin,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -37,6 +37,22 @@ interface AdminPayment {
   receipt_url: string | null;
   status: string;
   rejection_reason: string | null;
+  created_at: string;
+}
+
+interface AdminCryptoPayment {
+  id: string;
+  user_id: string;
+  applicant_name: string | null;
+  email: string | null;
+  order_id: string | null;
+  nowpayments_id: string | null;
+  amount: number;
+  currency: string;
+  pay_currency: string | null;
+  status: string;
+  transaction_hash: string | null;
+  payment_date: string | null;
   created_at: string;
 }
 
@@ -83,6 +99,9 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const [emailLogs, setEmailLogs] = useState<EmailLogRow[]>([]);
   const [emailLogLoading, setEmailLogLoading] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [cryptoPays, setCryptoPays] = useState<AdminCryptoPayment[]>([]);
+  const [cryptoSearch, setCryptoSearch] = useState('');
+  const [cryptoStatusFilter, setCryptoStatusFilter] = useState('All');
 
   const loadApps = useCallback(async () => {
     setLoading(true);
@@ -139,6 +158,15 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setLoading(false);
   }, [toast]);
 
+  const loadCryptoPays = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('crypto_payments')
+      .select('id, user_id, applicant_name, email, order_id, nowpayments_id, amount, currency, pay_currency, status, transaction_hash, payment_date, created_at')
+      .order('created_at', { ascending: false });
+    if (error) { toast(error.message, 'error'); return; }
+    setCryptoPays((data as AdminCryptoPayment[]) ?? []);
+  }, [toast]);
+
   const loadEmailLogs = useCallback(async () => {
     setEmailLogLoading(true);
     const logs = await fetchEmailLogs();
@@ -147,9 +175,9 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   }, []);
 
   useEffect(() => {
-    if (profile?.is_admin) { loadApps(); loadEmailLogs(); }
+    if (profile?.is_admin) { loadApps(); loadEmailLogs(); loadCryptoPays(); }
     else setLoading(false);
-  }, [profile, loadApps, loadEmailLogs]);
+  }, [profile, loadApps, loadEmailLogs, loadCryptoPays]);
 
   const filtered = useMemo(() => {
     return apps.filter((a) => {
@@ -314,6 +342,44 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
       toast(res.error ?? 'Failed to resend email.', 'error');
     }
     setResendingId(null);
+  };
+
+  const cryptoFiltered = useMemo(() => {
+    return cryptoPays.filter((cp) => {
+      const matchesStatus = cryptoStatusFilter === 'All' || cp.status.toLowerCase() === cryptoStatusFilter.toLowerCase();
+      const q = cryptoSearch.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        (cp.applicant_name?.toLowerCase().includes(q) ?? false) ||
+        (cp.email?.toLowerCase().includes(q) ?? false) ||
+        (cp.order_id?.toLowerCase().includes(q) ?? false) ||
+        (cp.nowpayments_id?.toLowerCase().includes(q) ?? false);
+      return matchesStatus && matchesSearch;
+    });
+  }, [cryptoPays, cryptoStatusFilter, cryptoSearch]);
+
+  const exportCryptoCsv = () => {
+    const headers = ['Applicant Name', 'Email', 'Order ID', 'NOWPayments ID', 'Amount', 'Currency', 'Transaction Hash', 'Status', 'Payment Date', 'Created At'];
+    const rows = cryptoFiltered.map((cp) => [
+      cp.applicant_name ?? '',
+      cp.email ?? '',
+      cp.order_id ?? '',
+      cp.nowpayments_id ?? '',
+      String(cp.amount),
+      cp.currency,
+      cp.transaction_hash ?? '',
+      cp.status,
+      cp.payment_date ? new Date(cp.payment_date).toISOString() : '',
+      new Date(cp.created_at).toISOString(),
+    ].map((v) => `"${v.replace(/"/g, '""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `crypto-payments-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!profile?.is_admin) {
@@ -549,6 +615,85 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                           {resendingId === log.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCw className="w-3.5 h-3.5" />} Resend
                         </button>
                       </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* Crypto Payments section */}
+      <div className="mt-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <h2 className="font-display font-bold text-xl text-ocean-900 flex items-center gap-2">
+            <Bitcoin className="w-5 h-5 text-emerald-600" /> Crypto Payments
+          </h2>
+          <div className="flex items-center gap-2">
+            <button onClick={loadCryptoPays} className="btn-ghost text-sm">Refresh</button>
+            <button onClick={exportCryptoCsv} disabled={cryptoFiltered.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50">
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <GlassCard className="mb-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input type="text" value={cryptoSearch} onChange={(e) => setCryptoSearch(e.target.value)} placeholder="Search by name, email, order ID, or payment ID..." className="input-field pl-11" />
+              {cryptoSearch && <button onClick={() => setCryptoSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>}
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              <select value={cryptoStatusFilter} onChange={(e) => setCryptoStatusFilter(e.target.value)} className="input-field pl-11 pr-8 appearance-none cursor-pointer">
+                {['All', 'waiting', 'confirming', 'confirmed', 'finished', 'failed', 'expired', 'refunded'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          {cryptoFiltered.length === 0 ? (
+            <div className="text-center py-12">
+              <Bitcoin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No crypto payments found.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-2">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <th className="px-3 py-3 font-semibold">Applicant</th>
+                    <th className="px-3 py-3 font-semibold hidden md:table-cell">Email</th>
+                    <th className="px-3 py-3 font-semibold hidden lg:table-cell">Order ID</th>
+                    <th className="px-3 py-3 font-semibold hidden lg:table-cell">NP Payment ID</th>
+                    <th className="px-3 py-3 font-semibold">Amount</th>
+                    <th className="px-3 py-3 font-semibold hidden sm:table-cell">Currency</th>
+                    <th className="px-3 py-3 font-semibold hidden xl:table-cell">Tx Hash</th>
+                    <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold hidden md:table-cell">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {cryptoFiltered.map((cp) => (
+                    <tr key={cp.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-3 font-medium text-ocean-900">{cp.applicant_name ?? '—'}</td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-600">{cp.email ?? '—'}</td>
+                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono">{cp.order_id ?? '—'}</td>
+                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono">{cp.nowpayments_id ?? '—'}</td>
+                      <td className="px-3 py-3 font-semibold text-ocean-900">${cp.amount}</td>
+                      <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{cp.currency}</td>
+                      <td className="px-3 py-3 hidden xl:table-cell text-slate-400 text-xs font-mono max-w-[120px] truncate">{cp.transaction_hash ?? '—'}</td>
+                      <td className="px-3 py-3">{(() => {
+                        const s = cp.status.toLowerCase();
+                        if (s === 'confirmed' || s === 'finished') return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> {cp.status}</span>;
+                        if (s === 'failed' || s === 'expired' || s === 'refunded') return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"><XCircle className="w-3 h-3" /> {cp.status}</span>;
+                        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><Loader2 className="w-3 h-3 animate-spin" /> {cp.status}</span>;
+                      })()}</td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-500 text-xs">{cp.payment_date ? new Date(cp.payment_date).toLocaleDateString() : new Date(cp.created_at).toLocaleDateString()}</td>
                     </tr>
                   ))}
                 </tbody>

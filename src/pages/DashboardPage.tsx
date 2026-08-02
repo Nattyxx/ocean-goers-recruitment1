@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   User, FileText, Upload, CreditCard, Bell, MessageSquare, LifeBuoy, Settings, LogOut,
   FileCheck, Clock, TrendingUp, CalendarClock, Camera, Mail, Phone, Briefcase, ArrowRight,
-  CheckCircle2, AlertCircle, Wallet, BadgeCheck,
+  CheckCircle2, AlertCircle, Wallet, BadgeCheck, Bitcoin, Loader2, XCircle,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
@@ -33,6 +33,18 @@ interface PaymentRow {
   rejection_reason: string | null;
 }
 
+interface CryptoPaymentRow {
+  id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  pay_currency: string;
+  status: string;
+  transaction_hash: string | null;
+  payment_date: string | null;
+  created_at: string;
+}
+
 export function DashboardPage({ onNavigate }: Props) {
   const { user, profile, signOut, updateProfile } = useAuth();
   const { toast } = useToast();
@@ -41,6 +53,7 @@ export function DashboardPage({ onNavigate }: Props) {
   const [docCount, setDocCount] = useState(0);
   const [uploadedDocTypes, setUploadedDocTypes] = useState<string[]>([]);
   const [payment, setPayment] = useState<PaymentRow | null>(null);
+  const [cryptoPayment, setCryptoPayment] = useState<CryptoPaymentRow | null>(null);
   const [notifCount, setNotifCount] = useState(0);
   const [editingProfile, setEditingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -66,16 +79,27 @@ export function DashboardPage({ onNavigate }: Props) {
     setNotifCount(notifRes.count ?? 0);
 
     if (appRes.data) {
-      const { data: payData } = await supabase
-        .from('payments')
-        .select('id, status, rejection_reason')
-        .eq('application_id', (appRes.data as AppData).id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setPayment(payData as PaymentRow | null);
+      const [payData, cryptoData] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('id, status, rejection_reason')
+          .eq('application_id', (appRes.data as AppData).id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('crypto_payments')
+          .select('id, order_id, amount, currency, pay_currency, status, transaction_hash, payment_date, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      setPayment(payData.data as PaymentRow | null);
+      setCryptoPayment(cryptoData.data as CryptoPaymentRow | null);
     } else {
       setPayment(null);
+      setCryptoPayment(null);
     }
 
     setLoading(false);
@@ -256,6 +280,51 @@ export function DashboardPage({ onNavigate }: Props) {
             <p className="font-semibold text-emerald-800">Payment Verified</p>
             <p className="text-sm text-emerald-600">Your registration fee has been confirmed. Your application is now under review.</p>
           </div>
+        </div>
+      )}
+
+      {/* Crypto payment status card */}
+      {cryptoPayment && (
+        <div className="mb-6 p-5 rounded-2xl bg-white border border-slate-200 shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+              <Bitcoin className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="font-display font-bold text-lg text-ocean-900">Crypto Payment Status</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Payment Status</p>
+              <div className="mt-1">{(() => {
+                const s = cryptoPayment.status.toLowerCase();
+                if (s === 'confirmed' || s === 'finished') {
+                  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> Paid</span>;
+                }
+                if (s === 'failed' || s === 'expired' || s === 'refunded') {
+                  return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"><XCircle className="w-3 h-3" /> Failed</span>;
+                }
+                return <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><Loader2 className="w-3 h-3 animate-spin" /> Pending</span>;
+              })()}</div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Amount</p>
+              <p className="font-display font-bold text-sm text-ocean-900 mt-1">${cryptoPayment.amount} {cryptoPayment.currency}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Currency</p>
+              <p className="font-display font-bold text-sm text-ocean-900 mt-1">USDT (TRC20)</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Payment Date</p>
+              <p className="font-display font-bold text-sm text-ocean-900 mt-1">{cryptoPayment.payment_date ? new Date(cryptoPayment.payment_date).toLocaleDateString() : '—'}</p>
+            </div>
+          </div>
+          {cryptoPayment.transaction_hash && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Transaction ID</p>
+              <p className="text-xs text-slate-600 font-mono mt-1 break-all">{cryptoPayment.transaction_hash}</p>
+            </div>
+          )}
         </div>
       )}
 

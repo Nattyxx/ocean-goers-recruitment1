@@ -17,6 +17,9 @@ export const EMAIL_LABELS: Record<string, string> = {
   application_approved: 'Application Approved',
   application_rejected: 'Application Rejected',
   interview_invitation: 'Interview Invitation',
+  manual_upload_reminder: 'Manual Upload Reminder',
+  manual_payment_request: 'Manual Payment Request',
+  custom_email: 'Custom Email',
 };
 
 export const EMAIL_TYPE_FILTERS = [
@@ -53,6 +56,7 @@ interface SendEmailParams {
   bodyHtml: string;
   metadata?: Record<string, unknown>;
   forceResend?: boolean;
+  sentBy?: string | null;
 }
 
 interface SendEmailResult {
@@ -134,6 +138,7 @@ export async function sendNotificationEmail(params: SendEmailParams): Promise<Se
         bodyHtml: wrapEmailTemplate(params.recipientName, params.bodyHtml),
         metadata: params.metadata ?? null,
         forceResend: params.forceResend ?? false,
+        sentBy: params.sentBy ?? null,
       }),
     });
 
@@ -179,6 +184,47 @@ export function documentsReceivedBody(fullName: string): string {
 <p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Best regards,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
 }
 
+export function manualUploadReminderBody(fullName: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Our records show that your application has been received successfully.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">However, you have not yet uploaded your required documents.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Please log in to your Ocean Goers dashboard and upload your documents so we can continue your recruitment process.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">If you need assistance, please contact us.</p>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Thank you,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
+}
+
+export function manualPaymentRequestBody(fullName: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Thank you for uploading your documents.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Your application has now reached the next stage.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Please log in to your dashboard and complete your <strong>Registration Payment</strong>.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Once payment has been confirmed, our recruitment team will continue processing your application.</p>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Thank you,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
+}
+
+export function interviewInvitationBody(fullName: string, date: string, time: string, location: string, notes: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Congratulations!</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">You have been invited for an interview.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;"><strong>Interview Date:</strong> ${date}<br><strong>Interview Time:</strong> ${time}<br><strong>Location/Meeting Link:</strong> ${location}</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;"><strong>Additional Notes:</strong> ${notes || 'None'}</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Please arrive on time and bring any requested documents.</p>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Best regards,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
+}
+
+export function customEmailBody(fullName: string, message: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<div style="color:#475569;font-size:15px;line-height:1.7;">${message}</div>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Best regards,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
+}
+
+export const MANUAL_EMAIL_TEMPLATES = [
+  { key: 'upload_reminder', label: 'Upload Documents Reminder', subject: 'Complete Your Application – Upload Required Documents', getType: () => 'manual_upload_reminder' },
+  { key: 'payment_request', label: 'Registration Payment Request', subject: 'Registration Payment Required', getType: () => 'manual_payment_request' },
+  { key: 'interview', label: 'Interview Invitation', subject: 'Interview Invitation – Ocean Goers', getType: () => 'interview_invitation' },
+  { key: 'custom', label: 'Custom Email', subject: '', getType: () => 'custom_email' },
+] as const;
+
 export async function hasEmailBeenSent(userId: string, emailType: string): Promise<boolean> {
   const { data } = await supabase
     .from('email_log')
@@ -189,6 +235,30 @@ export async function hasEmailBeenSent(userId: string, emailType: string): Promi
     .limit(1);
 
   return (data?.length ?? 0) > 0;
+}
+
+export async function wasEmailSentRecently(userId: string, emailType: string, withinHours = 24): Promise<boolean> {
+  const cutoff = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from('email_log')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('email_type', emailType)
+    .eq('status', 'sent')
+    .gte('sent_at', cutoff)
+    .limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+export async function fetchEmailLogsForUser(userId: string): Promise<EmailLogRow[]> {
+  const { data, error } = await supabase
+    .from('email_log')
+    .select('id, user_id, email_to, recipient_name, email_type, subject, status, error_message, sent_at, metadata')
+    .eq('user_id', userId)
+    .order('sent_at', { ascending: false })
+    .limit(50);
+  if (error || !data) return [];
+  return (data as EmailLogRow[]) ?? [];
 }
 
 export async function fetchEmailLogs(): Promise<EmailLogRow[]> {

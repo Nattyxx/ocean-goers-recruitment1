@@ -20,6 +20,7 @@ interface SendEmailPayload {
   bodyHtml: string;
   metadata?: Record<string, unknown> | null;
   forceResend?: boolean;
+  sentBy?: string | null;
 }
 
 async function supabaseRequest(path: string, method: string, body?: unknown) {
@@ -81,6 +82,7 @@ async function logEmail(
   status: string,
   errorMessage: string | null,
   metadata: Record<string, unknown> | null,
+  sentBy: string | null,
 ) {
   await supabaseRequest("email_log", "POST", {
     user_id: userId,
@@ -92,6 +94,7 @@ async function logEmail(
     status,
     error_message: errorMessage,
     metadata,
+    sent_by: sentBy,
   });
 }
 
@@ -143,6 +146,7 @@ Deno.serve(async (req: Request) => {
         newStatus,
         sendResult.error ?? null,
         { ...((log.metadata as Record<string, unknown> | null) ?? {}), resent_from: log.id },
+        log.sent_by ?? null,
       );
 
       if (!sendResult.success) {
@@ -190,6 +194,7 @@ Deno.serve(async (req: Request) => {
       status,
       sendResult.error ?? null,
       payload.metadata ?? null,
+      payload.sentBy ?? null,
     );
 
     if (!sendResult.success) {

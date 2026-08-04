@@ -3,7 +3,7 @@ import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
   Download, ExternalLink, Loader2, ArrowRightCircle, CreditCard, Receipt,
-  Send, MailCheck, RotateCw, History, Bitcoin,
+  Send, MailCheck, RotateCw, History, Bitcoin, Mail as MailIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -13,8 +13,9 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
+import { ManualEmailModal, type ManualEmailRecipient } from '../components/ManualEmailModal';
 import { STATUSES, DOC_TYPES, APPLICATION_STEPS, REQUIRED_DOC_KEYS } from '../lib/constants';
-import { sendNotificationEmail, fetchEmailLogs, resendEmail, EMAIL_LABELS, EMAIL_TYPE_FILTERS, type EmailLogRow } from '../lib/email';
+import { sendNotificationEmail, fetchEmailLogs, fetchEmailLogsForUser, resendEmail, EMAIL_LABELS, EMAIL_TYPE_FILTERS, type EmailLogRow } from '../lib/email';
 
 type Status = typeof STATUSES[number] | 'Verified';
 
@@ -104,6 +105,10 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const [cryptoPays, setCryptoPays] = useState<AdminCryptoPayment[]>([]);
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoStatusFilter, setCryptoStatusFilter] = useState('All');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [emailModalRecipients, setEmailModalRecipients] = useState<ManualEmailRecipient[]>([]);
+  const [applicantEmailHistory, setApplicantEmailHistory] = useState<EmailLogRow[]>([]);
+  const [applicantEmailLoading, setApplicantEmailLoading] = useState(false);
 
   const loadApps = useCallback(async () => {
     setLoading(true);
@@ -346,6 +351,42 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setResendingId(null);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map((a) => a.id)));
+  };
+
+  const getRecipientsFromIds = (ids: Set<string>): ManualEmailRecipient[] => {
+    return apps.filter((a) => ids.has(a.id) && a.profile?.email).map((a) => ({
+      userId: a.user_id, email: a.profile!.email, fullName: a.profile?.full_name ?? 'Applicant',
+    }));
+  };
+
+  const openEmailModal = (recipients: ManualEmailRecipient[]) => {
+    if (recipients.length === 0) { toast('No recipients with valid email addresses.', 'error'); return; }
+    setEmailModalRecipients(recipients);
+  };
+
+  const loadApplicantEmailHistory = useCallback(async (userId: string) => {
+    setApplicantEmailLoading(true);
+    const logs = await fetchEmailLogsForUser(userId);
+    setApplicantEmailHistory(logs);
+    setApplicantEmailLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (selected) loadApplicantEmailHistory(selected.user_id);
+  }, [selected, loadApplicantEmailHistory]);
+
   const cryptoFiltered = useMemo(() => {
     return cryptoPays.filter((cp) => {
       const matchesStatus = cryptoStatusFilter === 'All' || cp.status.toLowerCase() === cryptoStatusFilter.toLowerCase();
@@ -454,6 +495,22 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
         </div>
       </GlassCard>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 p-3 rounded-2xl bg-ocean-50 border border-ocean-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-scale-in">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-ocean-600 text-white text-sm font-bold">{selectedIds.size}</span>
+            <span className="text-sm font-medium text-ocean-800">applicant{selectedIds.size > 1 ? 's' : ''} selected</span>
+            <button onClick={() => setSelectedIds(new Set())} className="text-xs text-ocean-600 hover:text-ocean-800 underline">Clear</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => openEmailModal(getRecipientsFromIds(selectedIds))} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gold-400 text-ocean-900 text-sm font-semibold hover:bg-gold-500 transition-colors">
+              <Send className="w-4 h-4" /> Send Email
+            </button>
+          </div>
+        </div>
+      )}
+
       <GlassCard>
         {filtered.length === 0 ? (
           <div className="text-center py-12">
@@ -465,6 +522,9 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-3 font-semibold w-10">
+                    <input type="checkbox" checked={selectedIds.size === filtered.length && filtered.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-300 text-ocean-600 focus:ring-ocean-500 cursor-pointer" />
+                  </th>
                   <th className="px-3 py-3 font-semibold">Applicant</th>
                   <th className="px-3 py-3 font-semibold hidden md:table-cell">Position</th>
                   <th className="px-3 py-3 font-semibold hidden lg:table-cell">Phone</th>
@@ -477,7 +537,10 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filtered.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={a.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.has(a.id) ? 'bg-ocean-50/40' : ''}`}>
+                    <td className="px-3 py-3">
+                      <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)} className="w-4 h-4 rounded border-slate-300 text-ocean-600 focus:ring-ocean-500 cursor-pointer" />
+                    </td>
                     <td className="px-3 py-3">
                       <div className="font-medium text-ocean-900">{a.profile?.full_name ?? 'Unknown'}</div>
                       <div className="text-xs text-slate-400">{a.profile?.email ?? ''}</div>
@@ -496,6 +559,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                         <button onClick={() => advanceStage(a.id, a.current_step)} disabled={actionLoading || a.current_step >= 10} className="p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed" title="Next Stage"><ArrowRightCircle className="w-4 h-4" /></button>
                         <button onClick={() => updateStatus(a.id, 'Rejected', a.current_step)} disabled={actionLoading || a.status === 'Rejected'} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40" title="Reject"><XCircle className="w-4 h-4" /></button>
                         <button onClick={() => { setInterviewModal(a); setInterviewDate(''); setInterviewTime(''); setInterviewLocation(''); setInterviewNotes(''); }} className="p-2 rounded-lg text-sky-600 hover:bg-sky-50 transition-colors" title="Interview Invitation"><Send className="w-4 h-4" /></button>
+                        <button onClick={() => openEmailModal([{ userId: a.user_id, email: a.profile?.email ?? '', fullName: a.profile?.full_name ?? 'Applicant' }])} disabled={!a.profile?.email} className="p-2 rounded-lg text-gold-600 hover:bg-gold-50 transition-colors disabled:opacity-40" title="Send Email"><MailIcon className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -533,6 +597,41 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
             )}
 
             <DocumentsSection docs={selected.documents} />
+
+            {/* Per-applicant email history */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Email History</p>
+                <button onClick={() => openEmailModal([{ userId: selected.user_id, email: selected.profile?.email ?? '', fullName: selected.profile?.full_name ?? 'Applicant' }])} disabled={!selected.profile?.email} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold-400 text-ocean-900 text-xs font-semibold hover:bg-gold-500 transition-colors disabled:opacity-50">
+                  <Send className="w-3.5 h-3.5" /> Send Email
+                </button>
+              </div>
+              {applicantEmailLoading ? (
+                <div className="flex items-center justify-center py-4"><Loader2 className="w-5 h-5 text-ocean-500 animate-spin" /></div>
+              ) : applicantEmailHistory.length === 0 ? (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <MailCheck className="w-5 h-5 text-slate-300 mx-auto mb-1" />
+                  <p className="text-xs text-slate-400">No emails sent to this applicant yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {applicantEmailHistory.map((log) => (
+                    <div key={log.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-ocean-900 truncate">{EMAIL_LABELS[log.email_type] ?? log.email_type}</p>
+                        <p className="text-xs text-slate-400 truncate">{log.subject}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-slate-500">{new Date(log.sent_at).toLocaleDateString()}</p>
+                        {log.status === 'sent'
+                          ? <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600"><CheckCircle2 className="w-3 h-3" /> Sent</span>
+                          : <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-600" title={log.error_message ?? ''}><XCircle className="w-3 h-3" /> Failed</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <StageApprovalSection
               currentStep={selected.current_step}
@@ -734,6 +833,15 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
           )}
         </GlassCard>
       </div>
+
+      {/* Manual email modal */}
+      <ManualEmailModal
+        open={emailModalRecipients.length > 0}
+        onClose={() => setEmailModalRecipients([])}
+        recipients={emailModalRecipients}
+        sentBy={profile?.id ?? null}
+        onSent={() => { loadEmailLogs(); if (selected) loadApplicantEmailHistory(selected.user_id); }}
+      />
 
       {/* Reject payment modal */}
       <Modal open={!!rejectModal} onClose={() => setRejectModal(null)} title="Reject Payment Receipt" maxWidth="max-w-md">

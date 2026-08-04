@@ -14,7 +14,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { Modal } from '../components/ui/Modal';
 import { STATUSES, DOC_TYPES, APPLICATION_STEPS, REQUIRED_DOC_KEYS } from '../lib/constants';
-import { sendNotificationEmail, fetchEmailLogs, resendEmail, EMAIL_LABELS, type EmailLogRow } from '../lib/email';
+import { sendNotificationEmail, fetchEmailLogs, resendEmail, EMAIL_LABELS, EMAIL_TYPE_FILTERS, type EmailLogRow } from '../lib/email';
 
 type Status = typeof STATUSES[number] | 'Verified';
 
@@ -99,6 +99,8 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const [emailLogs, setEmailLogs] = useState<EmailLogRow[]>([]);
   const [emailLogLoading, setEmailLogLoading] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const [emailSearch, setEmailSearch] = useState('');
+  const [emailTypeFilter, setEmailTypeFilter] = useState('All');
   const [cryptoPays, setCryptoPays] = useState<AdminCryptoPayment[]>([]);
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoStatusFilter, setCryptoStatusFilter] = useState('All');
@@ -574,9 +576,27 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
       {/* Email History section */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display font-bold text-xl text-ocean-900 flex items-center gap-2"><History className="w-5 h-5 text-ocean-600" /> Email History</h2>
+          <h2 className="font-display font-bold text-xl text-ocean-900 flex items-center gap-2"><History className="w-5 h-5 text-ocean-600" /> Email Notifications</h2>
           <button onClick={loadEmailLogs} className="btn-ghost text-sm">Refresh</button>
         </div>
+
+        <GlassCard className="mb-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input type="text" value={emailSearch} onChange={(e) => setEmailSearch(e.target.value)} placeholder="Search by applicant name or email..." className="input-field pl-11" />
+              {emailSearch && <button onClick={() => setEmailSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>}
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              <select value={emailTypeFilter} onChange={(e) => setEmailTypeFilter(e.target.value)} className="input-field pl-11 pr-8 appearance-none cursor-pointer">
+                {EMAIL_TYPE_FILTERS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+        </GlassCard>
+
         <GlassCard>
           {emailLogLoading ? (
             <div className="flex items-center justify-center py-8"><Spinner size={36} className="text-ocean-600" /></div>
@@ -599,7 +619,19 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {emailLogs.map((log) => (
+                  {emailLogs
+                    .filter((log) => {
+                      const q = emailSearch.trim().toLowerCase();
+                      const matchesSearch = !q ||
+                        (log.recipient_name?.toLowerCase().includes(q) ?? false) ||
+                        log.email_to.toLowerCase().includes(q);
+                      const matchesType = emailTypeFilter === 'All' ||
+                        log.email_type === emailTypeFilter ||
+                        (emailTypeFilter === 'documents_reminder' && log.email_type.startsWith('documents_reminder')) ||
+                        (emailTypeFilter === 'payment_reminder' && log.email_type.startsWith('payment_reminder'));
+                      return matchesSearch && matchesType;
+                    })
+                    .map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-3 py-3 font-medium text-ocean-900">{log.recipient_name ?? '—'}</td>
                       <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{log.email_to}</td>

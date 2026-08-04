@@ -5,12 +5,31 @@ const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL as string}/functi
 
 export const EMAIL_LABELS: Record<string, string> = {
   application_submitted: 'Application Submitted',
+  documents_reminder_24h: 'Documents Reminder (24h)',
+  documents_reminder_3d: 'Documents Reminder (3d)',
+  documents_reminder_7d: 'Documents Reminder (7d)',
+  documents_received: 'Documents Received',
   payment_required: 'Payment Required',
+  payment_reminder_24h: 'Payment Reminder (24h)',
+  payment_reminder_3d: 'Payment Reminder (3d)',
+  payment_reminder_7d: 'Payment Reminder (7d)',
   payment_confirmed: 'Payment Confirmed',
   application_approved: 'Application Approved',
   application_rejected: 'Application Rejected',
   interview_invitation: 'Interview Invitation',
 };
+
+export const EMAIL_TYPE_FILTERS = [
+  { key: 'All', label: 'All Emails' },
+  { key: 'application_submitted', label: 'Registration Email' },
+  { key: 'documents_reminder', label: 'Documents Reminder' },
+  { key: 'payment_reminder', label: 'Payment Reminder' },
+  { key: 'documents_received', label: 'Documents Received' },
+  { key: 'payment_confirmed', label: 'Payment Confirmed' },
+  { key: 'application_approved', label: 'Application Approved' },
+  { key: 'application_rejected', label: 'Application Rejected' },
+  { key: 'interview_invitation', label: 'Interview Invitation' },
+] as const;
 
 export interface EmailLogRow {
   id: string;
@@ -41,7 +60,7 @@ interface SendEmailResult {
   error?: string;
 }
 
-function wrapEmailTemplate(recipientName: string, bodyHtml: string): string {
+function wrapEmailTemplate(_recipientName: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -67,18 +86,16 @@ function wrapEmailTemplate(recipientName: string, bodyHtml: string): string {
 <!-- Body -->
 <tr>
 <td style="padding:36px 40px;">
-<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Dear ${recipientName},</p>
 <div style="color:#475569;font-size:15px;line-height:1.7;">
 ${bodyHtml}
 </div>
-<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Regards,<br><strong style="color:#0c4a6e;">Ocean Goers Recruitment Team</strong></p>
 </td>
 </tr>
 
 <!-- Button -->
 <tr>
 <td style="padding:0 40px 36px;text-align:center;">
-<a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b0a;font-weight:700;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:10px;letter-spacing:0.3px;">Visit Your Account</a>
+<a href="${SITE_URL}/dashboard" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1e1b0a;font-weight:700;font-size:15px;text-decoration:none;padding:14px 36px;border-radius:10px;letter-spacing:0.3px;">Go to Dashboard</a>
 </td>
 </tr>
 
@@ -130,6 +147,36 @@ export async function sendNotificationEmail(params: SendEmailParams): Promise<Se
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Network error sending email.' };
   }
+}
+
+export function documentsReminderBody(fullName: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Thank you for applying through Ocean Goers Cruise Recruitment.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Your application has been received successfully. However, your application is still incomplete because the required documents have not yet been uploaded.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Please log in to your account and upload all required documents to continue your recruitment process.</p>
+<p style="margin:20px 0 8px;color:#0c4a6e;font-size:15px;font-weight:700;">Required Documents:</p>
+<ul style="color:#475569;font-size:15px;line-height:1.8;padding-left:20px;margin:0 0 20px;">
+<li>Passport</li>
+<li>CV / Resume</li>
+<li>Passport-size Photo</li>
+<li>Seaman Book (if available)</li>
+<li>Certificates (if applicable)</li>
+<li>Any other required documents</li>
+</ul>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Uploading your documents allows our recruitment team to begin reviewing your application.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">If you need assistance, please contact us.</p>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Best regards,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
+}
+
+export function documentsReceivedBody(fullName: string): string {
+  return `<p style="margin:0 0 20px;color:#1e293b;font-size:16px;line-height:1.6;">Hello ${fullName},</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Great news!</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">We have successfully received all of your required documents. Your application has now moved to the next stage.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">The next step is to complete your <strong>Registration Payment</strong>.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Please log in to your dashboard and proceed to the Payment Details section.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">After payment is confirmed, our recruitment team will continue processing your application.</p>
+<p style="color:#475569;font-size:15px;line-height:1.7;">Thank you for choosing Ocean Goers Cruise Recruitment.</p>
+<p style="margin:24px 0 0;color:#475569;font-size:15px;line-height:1.6;">Best regards,<br><strong style="color:#0c4a6e;">Ocean Goers Cruise Recruitment</strong></p>`;
 }
 
 export async function hasEmailBeenSent(userId: string, emailType: string): Promise<boolean> {

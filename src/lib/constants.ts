@@ -98,7 +98,7 @@ export const PAYMENT_ACCOUNTS = [
     method: 'Telebirr',
     label: 'Telebirr Mobile Money',
     accountName: 'Ocean Goers Recruitment',
-    accountNumber: '0911234567',
+    accountNumber: '0954785794',
     swiftCode: '',
     branch: 'Registered under Ocean Goers',
     color: 'from-sky-500 to-sky-700',

@@ -17,12 +17,13 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { BlogPage } from './pages/BlogPage';
 import { BlogArticlePage } from './pages/BlogArticlePage';
 import { BlogAdminPage } from './pages/BlogAdminPage';
+import { NotificationCenterPage } from './pages/NotificationCenterPage';
 import {
   AboutPage, ContactPage, ServicesPage, MessagesPage, SupportPage,
   SettingsPage, PrivacyPage, TermsPage,
 } from './pages/InfoPages';
 
-const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'messages', 'support', 'settings', 'admin', 'blog-admin'];
+const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'messages', 'support', 'settings', 'admin', 'blog-admin', 'notification-center'];
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -105,6 +106,7 @@ function AppContent() {
       case 'blog': return <BlogPage onNavigate={navigate} />;
       case 'blog-article': return <BlogArticlePage slug={pageParams.slug as string} onNavigate={navigate} />;
       case 'blog-admin': return user ? <BlogAdminPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
+      case 'notification-center': return user ? <NotificationCenterPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'messages': return user ? <MessagesPage /> : <HomePage onNavigate={navigate} />;
       case 'support': return user ? <SupportPage /> : <HomePage onNavigate={navigate} />;
       case 'settings': return user ? <SettingsPage /> : <HomePage onNavigate={navigate} />;

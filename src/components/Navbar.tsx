@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Ship, Menu, X, LogOut, LayoutDashboard, Bell, ShieldCheck, FileText } from 'lucide-react';
+import { Ship, Menu, X, LogOut, LayoutDashboard, Bell, ShieldCheck, FileText, Mail } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 interface Props {
@@ -107,6 +107,19 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                   Blog
                 </button>
               )}
+              {profile?.is_admin && (
+                <button
+                  onClick={() => onNavigate('notification-center')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm transition-colors ${
+                    currentPage === 'notification-center'
+                      ? 'bg-gold-100 text-gold-700'
+                      : 'text-gold-700 hover:bg-gold-50'
+                  } ${scrolled ? '' : 'text-gold-300 hover:bg-white/10'}`}
+                >
+                  <Mail className="w-4 h-4" />
+                  Notifications
+                </button>
+              )}
               <button
                 onClick={signOut}
                 className="p-2 rounded-full hover:bg-rose-50 transition-colors"
@@ -168,6 +181,9 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                       </button>
                       <button onClick={() => handleNav('blog-admin')} className="btn-ghost w-full text-sm text-ocean-700 border-ocean-200 flex items-center justify-center gap-2">
                         <FileText className="w-4 h-4" /> Blog Management
+                      </button>
+                      <button onClick={() => handleNav('notification-center')} className="btn-gold w-full text-sm flex items-center justify-center gap-2">
+                        <Mail className="w-4 h-4" /> Notification Center
                       </button>
                     </>
                   )}

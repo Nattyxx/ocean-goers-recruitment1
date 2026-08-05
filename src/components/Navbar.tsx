@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Ship, Menu, X, LogOut, LayoutDashboard, Bell, ShieldCheck } from 'lucide-react';
+import { Ship, Menu, X, LogOut, LayoutDashboard, Bell, ShieldCheck, FileText } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 interface Props {
@@ -48,7 +48,7 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
         </button>
 
         <div className="hidden lg:flex items-center gap-1">
-          {['home', 'about', 'services', 'tracking', 'contact'].map((p) => (
+          {['home', 'about', 'services', 'blog', 'tracking', 'contact'].map((p) => (
             <button
               key={p}
               onClick={() => handleNav(p)}
@@ -58,7 +58,7 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                   : scrolled ? 'text-ocean-700 hover:bg-ocean-50' : 'text-ocean-50 hover:bg-white/10'
               }`}
             >
-              {p === 'home' ? 'Home' : p === 'about' ? 'About' : p === 'services' ? 'Services' : p === 'tracking' ? 'Track' : 'Contact'}
+              {p === 'home' ? 'Home' : p === 'about' ? 'About' : p === 'services' ? 'Services' : p === 'blog' ? 'Career Resources' : p === 'tracking' ? 'Track' : 'Contact'}
             </button>
           ))}
         </div>
@@ -92,6 +92,19 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                 >
                   <ShieldCheck className="w-4 h-4" />
                   Admin
+                </button>
+              )}
+              {profile?.is_admin && (
+                <button
+                  onClick={() => onNavigate('blog-admin')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full font-medium text-sm transition-colors ${
+                    currentPage === 'blog-admin'
+                      ? 'bg-ocean-100 text-ocean-700'
+                      : 'text-ocean-700 hover:bg-ocean-50'
+                  } ${scrolled ? '' : 'text-white hover:bg-white/10'}`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Blog
                 </button>
               )}
               <button
@@ -133,7 +146,7 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
       {mobileOpen && (
         <div className="lg:hidden bg-white/95 backdrop-blur-xl border-t border-slate-200 animate-fade-in-fast">
           <div className="px-4 py-4 space-y-1">
-            {['home', 'about', 'services', 'tracking', 'contact'].map((p) => (
+            {['home', 'about', 'services', 'blog', 'tracking', 'contact'].map((p) => (
               <button
                 key={p}
                 onClick={() => handleNav(p)}
@@ -141,7 +154,7 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                   currentPage === p ? 'bg-ocean-100 text-ocean-700' : 'text-ocean-700 hover:bg-slate-50'
                 }`}
               >
-                {p === 'home' ? 'Home' : p === 'about' ? 'About' : p === 'services' ? 'Services' : p === 'tracking' ? 'Track Application' : 'Contact'}
+                {p === 'home' ? 'Home' : p === 'about' ? 'About' : p === 'services' ? 'Services' : p === 'blog' ? 'Career Resources' : p === 'tracking' ? 'Track Application' : 'Contact'}
               </button>
             ))}
             <div className="pt-3 border-t border-slate-100 space-y-2">
@@ -149,9 +162,14 @@ export function Navbar({ onLogin, onApply, onStatus, onNavigate, currentPage }: 
                 <>
                   <button onClick={() => handleNav('dashboard')} className="btn-ocean w-full text-sm">Dashboard</button>
                   {profile?.is_admin && (
-                    <button onClick={() => handleNav('admin')} className="btn-gold w-full text-sm flex items-center justify-center gap-2">
-                      <ShieldCheck className="w-4 h-4" /> Admin
-                    </button>
+                    <>
+                      <button onClick={() => handleNav('admin')} className="btn-gold w-full text-sm flex items-center justify-center gap-2">
+                        <ShieldCheck className="w-4 h-4" /> Admin
+                      </button>
+                      <button onClick={() => handleNav('blog-admin')} className="btn-ghost w-full text-sm text-ocean-700 border-ocean-200 flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" /> Blog Management
+                      </button>
+                    </>
                   )}
                   <button onClick={() => handleNav('notifications')} className="btn-ghost w-full text-sm text-ocean-700 border-ocean-200">Notifications</button>
                   <button onClick={signOut} className="w-full text-sm text-rose-600 font-medium py-3">Sign Out</button>

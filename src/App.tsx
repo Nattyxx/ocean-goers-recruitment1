@@ -14,16 +14,20 @@ import { TrackingPage } from './pages/TrackingPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { AdminPage } from './pages/AdminPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { BlogPage } from './pages/BlogPage';
+import { BlogArticlePage } from './pages/BlogArticlePage';
+import { BlogAdminPage } from './pages/BlogAdminPage';
 import {
   AboutPage, ContactPage, ServicesPage, MessagesPage, SupportPage,
   SettingsPage, PrivacyPage, TermsPage,
 } from './pages/InfoPages';
 
-const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'messages', 'support', 'settings'];
+const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'messages', 'support', 'settings', 'admin', 'blog-admin'];
 
 function AppContent() {
   const { user, loading } = useAuth();
   const [page, setPage] = useState('home');
+  const [pageParams, setPageParams] = useState<Record<string, unknown>>({});
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [statusOpen, setStatusOpen] = useState(false);
@@ -59,13 +63,14 @@ function AppContent() {
     setAuthOpen(true);
   };
 
-  const navigate = (p: string) => {
+  const navigate = (p: string, params?: Record<string, unknown>) => {
     if (PROTECTED_PAGES.includes(p) && !user) {
       setAuthMode('login');
       setAuthOpen(true);
       return;
     }
     setPage(p);
+    setPageParams(params ?? {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -97,6 +102,9 @@ function AppContent() {
       case 'tracking': return user ? <TrackingPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'payment': return user ? <PaymentPage /> : <HomePage onNavigate={navigate} />;
       case 'admin': return user ? <AdminPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
+      case 'blog': return <BlogPage onNavigate={navigate} />;
+      case 'blog-article': return <BlogArticlePage slug={pageParams.slug as string} onNavigate={navigate} />;
+      case 'blog-admin': return user ? <BlogAdminPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'messages': return user ? <MessagesPage /> : <HomePage onNavigate={navigate} />;
       case 'support': return user ? <SupportPage /> : <HomePage onNavigate={navigate} />;
       case 'settings': return user ? <SettingsPage /> : <HomePage onNavigate={navigate} />;

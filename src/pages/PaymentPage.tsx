@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { PAYMENT_METHODS, PAYMENT_ACCOUNTS, REQUIRED_DOC_KEYS } from '../lib/constants';
+import { logActivity } from '../lib/activity';
 
 interface CryptoPayment {
   id: string;
@@ -141,6 +142,7 @@ export function PaymentPage() {
 
       toast('Payment receipt uploaded! Status: Pending Verification.', 'success');
       await load();
+      if (user) logActivity(user.id, 'payment_uploaded', 'Payment receipt uploaded', { method });
       setMethod('');
     }
     setTimeout(() => { setUploading(false); setProgress(0); }, 600);

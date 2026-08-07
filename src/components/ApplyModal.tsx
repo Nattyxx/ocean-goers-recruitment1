@@ -7,6 +7,7 @@ import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
 import { POSITIONS, CRUISE_LINES } from '../lib/constants';
 import { sendNotificationEmail, documentsReminderBody } from '../lib/email';
+import { logActivity } from '../lib/activity';
 
 export function ApplyModal({
   open,
@@ -91,6 +92,7 @@ export function ApplyModal({
     setDone(true);
     setLoading(false);
     toast('Application submitted successfully!', 'success');
+    if (user) logActivity(user.id, 'application_submitted', `Applied for ${position}`, { position });
   };
 
   const handleClose = () => {

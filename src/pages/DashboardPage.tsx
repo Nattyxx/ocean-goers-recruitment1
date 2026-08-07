@@ -13,6 +13,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { ApplicationTimeline, type PaymentStatus } from '../components/ApplicationTimeline';
 import { Modal } from '../components/ui/Modal';
+import { ActivityFeed } from '../components/ActivityFeed';
 import { POSITIONS, REQUIRED_DOC_KEYS } from '../lib/constants';
 
 interface Props {
@@ -458,6 +459,12 @@ export function DashboardPage({ onNavigate }: Props) {
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" /> All caught up!
               </div>
             )}
+          </GlassCard>
+
+          {/* Activity History */}
+          <GlassCard>
+            <h3 className="font-display font-bold text-lg text-ocean-900 mb-4">Recent Activity</h3>
+            <ActivityFeed limit={8} />
           </GlassCard>
         </div>
       </div>

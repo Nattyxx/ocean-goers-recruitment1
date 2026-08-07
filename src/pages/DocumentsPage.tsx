@@ -12,6 +12,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
 import { DOC_TYPES, REQUIRED_DOC_KEYS } from '../lib/constants';
 import { sendNotificationEmail, hasEmailBeenSent, documentsReceivedBody } from '../lib/email';
+import { logActivity } from '../lib/activity';
 
 const icons: Record<string, typeof FileText> = {
   BookUser, FileText, HeartPulse, BookOpen, Award, ShieldCheck, GraduationCap, Image, Receipt,
@@ -109,6 +110,7 @@ export function DocumentsPage() {
     } else {
       toast(`${DOC_TYPES.find((d) => d.key === docType)?.label} uploaded successfully!`, 'success');
       await loadDocs();
+      if (user) logActivity(user.id, 'document_uploaded', `${DOC_TYPES.find((d) => d.key === docType)?.label} uploaded`, { doc_type: docType });
 
       const updatedDocTypes = [...new Set([...docs.map((d) => d.doc_type), docType])];
       const allRequiredDone = REQUIRED_DOC_KEYS.every((k) => updatedDocTypes.includes(k));

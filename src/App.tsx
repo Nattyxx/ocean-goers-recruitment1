@@ -18,15 +18,21 @@ import { BlogPage } from './pages/BlogPage';
 import { BlogArticlePage } from './pages/BlogArticlePage';
 import { BlogAdminPage } from './pages/BlogAdminPage';
 import { NotificationCenterPage } from './pages/NotificationCenterPage';
+import { InterviewPage } from './pages/InterviewPage';
+import { ResourcesPage } from './pages/ResourcesPage';
+import { SupportPage as NewSupportPage } from './pages/SupportPage';
+import { DashboardLayout } from './components/DashboardLayout';
 import {
-  AboutPage, ContactPage, ServicesPage, MessagesPage, SupportPage,
+  AboutPage, ContactPage, ServicesPage, MessagesPage,
   SettingsPage, PrivacyPage, TermsPage,
 } from './pages/InfoPages';
 
-const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'messages', 'support', 'settings', 'admin', 'blog-admin', 'notification-center'];
+const PROTECTED_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'interview', 'messages', 'support', 'settings', 'resources', 'admin', 'blog-admin', 'notification-center'];
+
+const DASHBOARD_PAGES = ['dashboard', 'documents', 'notifications', 'tracking', 'payment', 'interview', 'messages', 'support', 'settings', 'resources'];
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const [page, setPage] = useState('home');
   const [pageParams, setPageParams] = useState<Record<string, unknown>>({});
   const [authOpen, setAuthOpen] = useState(false);
@@ -102,13 +108,15 @@ function AppContent() {
       case 'notifications': return user ? <NotificationsPage /> : <HomePage onNavigate={navigate} />;
       case 'tracking': return user ? <TrackingPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'payment': return user ? <PaymentPage /> : <HomePage onNavigate={navigate} />;
+      case 'interview': return user ? <InterviewPage /> : <HomePage onNavigate={navigate} />;
+      case 'resources': return user ? <ResourcesPage /> : <HomePage onNavigate={navigate} />;
       case 'admin': return user ? <AdminPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'blog': return <BlogPage onNavigate={navigate} />;
       case 'blog-article': return <BlogArticlePage slug={pageParams.slug as string} onNavigate={navigate} />;
       case 'blog-admin': return user ? <BlogAdminPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'notification-center': return user ? <NotificationCenterPage onNavigate={navigate} /> : <HomePage onNavigate={navigate} />;
       case 'messages': return user ? <MessagesPage /> : <HomePage onNavigate={navigate} />;
-      case 'support': return user ? <SupportPage /> : <HomePage onNavigate={navigate} />;
+      case 'support': return user ? <NewSupportPage /> : <HomePage onNavigate={navigate} />;
       case 'settings': return user ? <SettingsPage /> : <HomePage onNavigate={navigate} />;
       case 'about': return <AboutPage />;
       case 'services': return <ServicesPage />;
@@ -129,7 +137,13 @@ function AppContent() {
         currentPage={page}
       />
       <main className="flex-1">
-        {renderPage()}
+        {user && DASHBOARD_PAGES.includes(page) ? (
+          <DashboardLayout currentPage={page} onNavigate={navigate} onSignOut={async () => { await signOut(); navigate('home'); }}>
+            {renderPage()}
+          </DashboardLayout>
+        ) : (
+          renderPage()
+        )}
       </main>
       <Footer onNavigate={navigate} />
 

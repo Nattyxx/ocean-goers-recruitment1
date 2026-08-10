@@ -66,7 +66,7 @@ export function TrackingPage({ onNavigate }: Props) {
         <GlassCard className="text-center py-16">
           <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h2 className="font-display font-bold text-2xl text-ocean-900 mb-2">No Application Found</h2>
-          <p className="text-slate-500 mb-6">You haven&apos;t submitted an application yet. Start your cruise ship career today!</p>
+          <p className="text-slate-500 mb-6">You haven&apos;t submitted an application yet. Apply for cruise ship jobs and start your career at sea today!</p>
           <button onClick={() => onNavigate('home')} className="btn-gold inline-flex items-center gap-2">
             Apply Now <ArrowRight className="w-4 h-4" />
           </button>

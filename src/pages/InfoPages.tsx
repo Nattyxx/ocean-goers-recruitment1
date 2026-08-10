@@ -22,7 +22,8 @@ export function AboutPage() {
         <h1 className="font-display font-bold text-4xl text-ocean-900 mb-4">About Ocean Goers</h1>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
           We are a premier international cruise ship recruitment agency, connecting qualified maritime
-          professionals with the world&apos;s leading cruise lines since 2013.
+          professionals with the world&apos;s leading cruise lines since 2013. As a trusted cruise
+          recruitment agency, we&apos;ve placed over 18,500 candidates in cruise ship jobs worldwide.
         </p>
       </div>
 
@@ -113,9 +114,10 @@ export function ContactPage() {
         <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ocean-100 text-ocean-700 text-xs font-semibold tracking-wide uppercase mb-4">
           <Mail className="w-3.5 h-3.5" /> Contact
         </span>
-        <h1 className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl text-ocean-900 mb-3">Contact Us</h1>
+        <h1 className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl text-ocean-900 mb-3">Contact Ocean Goers</h1>
         <p className="text-slate-600 text-base sm:text-lg max-w-xl mx-auto">
-          We&apos;re here to help you start your cruise ship career.
+          We&apos;re here to help you apply for cruise ship jobs and start your career at sea.
+          Reach out to our cruise recruitment agency for applications, document processing, and career support.
         </p>
       </div>
 
@@ -200,8 +202,11 @@ export function ServicesPage() {
   return (
     <div className="pt-20 pb-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
       <div className="text-center mb-12">
-        <h1 className="font-display font-bold text-4xl text-ocean-900 mb-3">Our Services</h1>
-        <p className="text-slate-600 max-w-2xl mx-auto">Comprehensive recruitment solutions for cruise ship employment — from application to deployment.</p>
+        <h1 className="font-display font-bold text-4xl text-ocean-900 mb-3">Our Cruise Recruitment Services</h1>
+        <p className="text-slate-600 max-w-2xl mx-auto">
+          Comprehensive cruise recruitment solutions for cruise ship employment — from job placement to deployment.
+          As a full-service cruise recruitment agency, we handle every step of your journey to a cruise ship career.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -467,6 +472,7 @@ export function PrivacyPage() {
   return (
     <div className="pt-20 pb-12 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
       <h1 className="font-display font-bold text-3xl text-ocean-900 mb-6">Privacy Policy</h1>
+      <p className="text-slate-600 mb-6">How Ocean Goers collects, uses, and safeguards your personal information during the cruise ship recruitment process.</p>
       <div className="prose prose-slate max-w-none">
         <GlassCard className="space-y-4 text-sm text-slate-600 leading-relaxed">
           <p>Ocean Goers is committed to protecting your privacy. This policy explains how we collect, use, and safeguard your personal information.</p>
@@ -488,6 +494,7 @@ export function TermsPage() {
   return (
     <div className="pt-20 pb-12 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
       <h1 className="font-display font-bold text-3xl text-ocean-900 mb-6">Terms & Conditions</h1>
+      <p className="text-slate-600 mb-6">The terms and conditions for using Ocean Goers cruise ship recruitment services, including eligibility, registration fees, and placement policies.</p>
       <GlassCard className="space-y-4 text-sm text-slate-600 leading-relaxed">
         <p>By using Ocean Goers&apos; services, you agree to the following terms and conditions.</p>
         <h3 className="font-display font-semibold text-ocean-900">Eligibility</h3>

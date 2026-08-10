@@ -77,8 +77,8 @@ export function Hero({ onApply, onLogin, onStatus }: { onApply: () => void; onLo
         </h1>
 
         <p className="text-lg sm:text-xl text-ocean-100 max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Join thousands of maritime professionals working on the world's finest cruise lines.
-          Your dream career at sea starts here.
+          Ocean Goers is the leading cruise recruitment agency connecting maritime professionals with
+          the world's finest cruise lines. Apply for cruise ship jobs worldwide and start your career at sea.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.4s' }}>
@@ -163,7 +163,8 @@ export function AboutSection() {
         <p className="text-slate-600 leading-relaxed">
           Ocean Goers is a premier international cruise ship recruitment agency dedicated to connecting
           qualified maritime professionals with the world's leading cruise lines. With over a decade of
-          experience, we've built a reputation for excellence, integrity, and successful placements.
+          experience as a trusted cruise recruitment agency, we've built a reputation for excellence,
+          integrity, and over 18,500 successful placements across 62 countries.
         </p>
       </div>
 
@@ -199,9 +200,9 @@ export function ServicesSection() {
         <div className="text-center max-w-2xl mx-auto mb-14">
           <span className="inline-block px-3 py-1 rounded-full bg-gold-100 text-gold-700 text-xs font-semibold tracking-wide uppercase mb-4">Our Services</span>
           <h2 className="font-display font-bold text-3xl sm:text-4xl text-ocean-900 mb-4">
-            Complete Recruitment Solutions
+            Complete Cruise Recruitment Solutions
           </h2>
-          <p className="text-slate-600">Everything you need to launch your maritime career, all in one place.</p>
+          <p className="text-slate-600">Everything you need to apply for cruise ship jobs and launch your maritime career, all in one place.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -236,10 +237,11 @@ export function CTASection({ onApply }: { onApply: () => void }) {
         <div className="relative">
           <Waves className="w-12 h-12 text-gold-400 mx-auto mb-4" />
           <h2 className="font-display font-bold text-3xl sm:text-4xl text-white mb-4">
-            Ready to Set Sail on Your New Career?
+            Ready to Apply for Cruise Ship Jobs?
           </h2>
           <p className="text-ocean-100 max-w-xl mx-auto mb-8">
             Join thousands of maritime professionals who launched their cruise ship careers with Ocean Goers.
+            As a leading cruise recruitment agency, we handle everything from application to deployment.
             Your adventure at sea begins with a single application.
           </p>
           <button onClick={onApply} className="btn-gold inline-flex items-center gap-2 group">

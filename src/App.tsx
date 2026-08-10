@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSEO } from './lib/seo';
 import { AuthProvider, useAuth } from './lib/auth';
 import { ToastProvider } from './lib/toast';
 import { Navbar } from './components/Navbar';
@@ -39,6 +40,8 @@ function AppContent() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [statusOpen, setStatusOpen] = useState(false);
   const [isResetRoute, setIsResetRoute] = useState(false);
+
+  useSEO(page);
 
   // Detect the password-reset route. Supabase recovery links put type=recovery
   // and the tokens in the URL hash. The path may be /reset-password (when the

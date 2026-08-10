@@ -7,7 +7,10 @@ interface Props {
 export function Footer({ onNavigate }: Props) {
   const links = [
     { label: 'About Ocean Goers', page: 'about' },
+    { label: 'Our Services', page: 'services' },
+    { label: 'Cruise Ship Jobs', page: 'home' },
     { label: 'Career Resources', page: 'blog' },
+    { label: 'Track Application', page: 'tracking' },
     { label: 'Contact', page: 'contact' },
     { label: 'Privacy Policy', page: 'privacy' },
     { label: 'Terms & Conditions', page: 'terms' },

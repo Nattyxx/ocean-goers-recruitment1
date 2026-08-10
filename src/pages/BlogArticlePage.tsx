@@ -346,7 +346,7 @@ export function BlogArticlePage({ slug, onNavigate }: Props) {
                     <img src={rel.featured_image} alt={rel.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <img src="/og-image.png" alt="" className="w-16 h-16 object-contain opacity-60" />
+                      <img src="/og-image.png" alt="Ocean Goers cruise recruitment logo" className="w-16 h-16 object-contain opacity-60" />
                     </div>
                   )}
                 </div>

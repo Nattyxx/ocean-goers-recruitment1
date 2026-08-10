@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageCircle, Mail, Phone, LifeBuoy, Loader2, ChevronDown } from 'lucide-react';
 import { useToast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { GlassCard } from '../components/ui/GlassCard';
+import { getFAQJsonLd } from '../lib/seo';
 
 const WHATSAPP_LINK = 'https://wa.me/971588576150?text=Hello%20Ocean%20Goers,%20I%20need%20support%20with%20my%20application.';
 const PHONE_LINK = 'tel:+971588576150';
@@ -47,6 +48,15 @@ export function SupportPage() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.id = 'faq-jsonld';
+    script.setAttribute('type', 'application/ld+json');
+    script.textContent = JSON.stringify(getFAQJsonLd(FAQS));
+    document.head.appendChild(script);
+    return () => { script.remove(); };
+  }, []);
 
   const contactButtons = [
     { icon: MessageCircle, label: 'WhatsApp', href: WHATSAPP_LINK, color: 'from-green-500 to-green-700', external: true },

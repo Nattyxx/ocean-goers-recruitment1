@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /documents
+Disallow: /notifications
+Disallow: /payment
+Disallow: /interview
+Disallow: /messages
+Disallow: /support
+Disallow: /settings
+Disallow: /resources
+Disallow: /admin
+Disallow: /blog-admin
+Disallow: /notification-center
+Disallow: /reset-password
+
+Sitemap: https://oceangoers.org/sitemap.xml

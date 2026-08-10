@@ -331,7 +331,7 @@ function ArticleCard({ article, onClick }: { article: BlogArticle; onClick: () =
           <img src={article.featured_image} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <img src="/og-image.png" alt="" className="w-24 h-24 object-contain opacity-60" />
+            <img src="/og-image.png" alt="Ocean Goers cruise recruitment logo" className="w-24 h-24 object-contain opacity-60" />
           </div>
         )}
         {article.category && (

@@ -1,9 +1,10 @@
 import { GlassCard } from '../components/ui/GlassCard';
-import { Ship, Target, Eye, Heart, Award, Users, Globe2, Briefcase, Mail, Phone, MapPin, Send, MessageCircle, LifeBuoy, Settings as SettingsIcon, Bell, Shield, Lock, User, Clock, Navigation, ArrowUpRight } from 'lucide-react';
-import { useState } from 'react';
+import { Ship, Target, Eye, Heart, Award, Users, Globe2, Briefcase, Mail, Phone, MapPin, Send, MessageCircle, LifeBuoy, Settings as SettingsIcon, Bell, Shield, Lock, User, Clock, Navigation, ArrowUpRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../lib/toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { getFAQJsonLd } from '../lib/seo';
 
 const WHATSAPP_LINK = 'https://wa.me/971588576150?text=Hello%20Ocean%20Goers,%20I%20would%20like%20to%20apply%20for%20a%20cruise%20ship%20job.%20Please%20provide%20me%20with%20more%20information.%20Thank%20you.';
 const PHONE_LINK = 'tel:+971588576150';
@@ -218,14 +219,50 @@ export function ServicesPage() {
   );
 }
 
+type MessageRow = {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+};
+
 export function MessagesPage() {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const loadMessages = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const { data, error: queryError } = await supabase
+        .from('notifications')
+        .select('id, title, message, type, read, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (queryError) throw queryError;
+      setMessages((data ?? []) as MessageRow[]);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 800);
-  }, []);
+    loadMessages();
+  }, [loadMessages]);
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="pt-20 pb-12 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-fast">
@@ -236,12 +273,43 @@ export function MessagesPage() {
         <div className="flex items-center justify-center min-h-[40vh]">
           <div className="w-10 h-10 border-4 border-ocean-100 rounded-full animate-spin border-t-ocean-600" />
         </div>
-      ) : (
+      ) : error ? (
+        <GlassCard className="text-center py-16">
+          <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-4" />
+          <h3 className="font-display font-semibold text-lg text-ocean-900 mb-2">Something went wrong</h3>
+          <p className="text-slate-500 mb-5">We couldn&apos;t load your messages. Please check your connection and try again.</p>
+          <button onClick={loadMessages} className="btn-ocean inline-flex items-center gap-2">
+            <RefreshCw className="w-4 h-4" /> Retry
+          </button>
+        </GlassCard>
+      ) : messages.length === 0 ? (
         <GlassCard className="text-center py-16">
           <MessageCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <h3 className="font-display font-semibold text-lg text-ocean-900 mb-2">No Messages Yet</h3>
-          <p className="text-slate-500">When the recruitment team sends you a message, it will appear here.</p>
+          <p className="text-slate-500">No messages yet. Messages from Ocean Goers will appear here.</p>
         </GlassCard>
+      ) : (
+        <div className="space-y-4">
+          {messages.map((m) => (
+            <GlassCard key={m.id} className="p-5">
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${m.read ? 'bg-slate-100' : 'bg-ocean-100'}`}>
+                  <MessageCircle className={`w-5 h-5 ${m.read ? 'text-slate-400' : 'text-ocean-600'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <h3 className="font-display font-semibold text-ocean-900 truncate">{m.title}</h3>
+                    {!m.read && <span className="flex-shrink-0 w-2 h-2 rounded-full bg-gold-500" />}
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed mb-2">{m.message}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" /> {formatDate(m.created_at)}
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
       )}
     </div>
   );

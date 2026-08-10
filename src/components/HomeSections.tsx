@@ -46,7 +46,7 @@ export function Hero({ onApply, onLogin, onStatus }: { onApply: () => void; onLo
       <div className="absolute inset-0 overflow-hidden">
         <img
           src="https://images.pexels.com/photos/1058959/pexels-photo-1058959.jpeg?auto=compress&cs=tinysrgb&w=1920"
-          alt="Cruise ship at sea"
+          alt="Cruise ship sailing across the ocean — apply for cruise ship jobs with Ocean Goers"
           className="w-full h-full object-cover opacity-30"
           loading="eager"
         />

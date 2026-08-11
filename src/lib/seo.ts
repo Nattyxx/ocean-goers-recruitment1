@@ -83,6 +83,11 @@ const PUBLIC_PAGES: Record<string, SEOConfig> = {
     path: '/terms',
     keywords: 'Ocean Goers terms, cruise recruitment terms, cruise ship job terms and conditions',
   },
+  'not-found': {
+    title: 'Page Not Found | Ocean Goers',
+    description: 'The page you are looking for does not exist. Return to the Ocean Goers homepage to apply for cruise ship jobs worldwide.',
+    path: '/404',
+  },
 };
 
 const PRIVATE_PAGES = new Set([

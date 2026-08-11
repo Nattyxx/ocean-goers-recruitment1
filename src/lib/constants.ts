@@ -1,3 +1,18 @@
+export const SUPPORT_CONTACTS = {
+  telegram: {
+    label: 'Telegram Support',
+    text: 'Chat with us on Telegram',
+    username: '@OG_Recruitment_et',
+    url: 'https://t.me/OG_Recruitment_et',
+  },
+  whatsapp: {
+    label: 'WhatsApp Support',
+    text: 'Chat with us on WhatsApp',
+    phone: '+971 58 857 6150',
+    url: 'https://wa.me/971588576150?text=Hello%20OCEAN%20GOERS%20Support%2C%20I%20need%20assistance.',
+  },
+} as const;
+
 export const DOC_TYPES = [
   { key: 'passport', label: 'Passport', icon: 'BookUser' },
   { key: 'cv', label: 'CV / Resume', icon: 'FileText' },

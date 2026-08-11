@@ -6,6 +6,7 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { AuthModal } from './components/AuthModal';
 import { StatusCheckModal } from './components/StatusCheckModal';
+import { SupportButton } from './components/SupportButton';
 import { FullPageSpinner } from './components/ui/Spinner';
 import { HomePage } from './pages/HomePage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -157,6 +158,7 @@ function AppContent() {
         onGotoDashboard={() => navigate('dashboard')}
       />
       <StatusCheckModal open={statusOpen} onClose={() => setStatusOpen(false)} />
+      <SupportButton />
     </div>
   );
 }

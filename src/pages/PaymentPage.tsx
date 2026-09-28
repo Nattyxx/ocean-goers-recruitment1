@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw, Bitcoin, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
+import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw, Bitcoin, ShieldCheck, ArrowRight, AlertCircle, Lock, User, Mail, Phone, ChevronDown } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
@@ -25,6 +25,32 @@ interface CryptoPayment {
 }
 
 const accountIcons: Record<string, typeof Landmark> = { Landmark, Smartphone, Globe };
+
+const COUNTRY_CODES = [
+  { code: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: '+251', flag: '🇪🇹', name: 'Ethiopia' },
+  { code: '+1', flag: '🇺🇸', name: 'USA' },
+  { code: '+44', flag: '🇬🇧', name: 'UK' },
+  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+  { code: '+974', flag: '🇶🇦', name: 'Qatar' },
+  { code: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: '+256', flag: '🇺🇬', name: 'Uganda' },
+  { code: '+255', flag: '🇹🇿', name: 'Tanzania' },
+  { code: '+27', flag: '🇿🇦', name: 'South Africa' },
+  { code: '+91', flag: '🇮🇳', name: 'India' },
+  { code: '+86', flag: '🇨🇳', name: 'China' },
+  { code: '+33', flag: '🇫🇷', name: 'France' },
+  { code: '+49', flag: '🇩🇪', name: 'Germany' },
+  { code: '+39', flag: '🇮🇹', name: 'Italy' },
+  { code: '+34', flag: '🇪🇸', name: 'Spain' },
+  { code: '+81', flag: '🇯🇵', name: 'Japan' },
+  { code: '+82', flag: '🇰🇷', name: 'South Korea' },
+  { code: '+61', flag: '🇦🇺', name: 'Australia' },
+  { code: '+1', flag: '🇨🇦', name: 'Canada' },
+];
+
+const ONEPAY_LINK = 'https://1pay.cx/l/Hwzqtsd6';
+const RAMPEX_LINK = 'https://rampex.io/pay/sefnqNMx';
 
 interface Payment {
   id: string;
@@ -58,6 +84,22 @@ export function PaymentPage() {
   const [cryptoSuccess, setCryptoSuccess] = useState(false);
   const [cryptoError, setCryptoError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [cardName, setCardName] = useState('');
+  const [cardEmail, setCardEmail] = useState('');
+  const [cardPhone, setCardPhone] = useState('');
+  const [cardCountryCode, setCardCountryCode] = useState('+971');
+  const [cardCountryOpen, setCardCountryOpen] = useState(false);
+
+  const handleCardPay = (provider: '1pay' | 'rampex') => {
+    if (!cardName.trim()) { toast('Please enter your full name.', 'warning'); return; }
+    if (!cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim())) { toast('Please enter a valid email address.', 'warning'); return; }
+    if (!cardPhone.trim()) { toast('Please enter your phone number.', 'warning'); return; }
+
+    const link = provider === '1pay' ? ONEPAY_LINK : RAMPEX_LINK;
+    toast(`Redirecting to ${provider === '1pay' ? '1Pay' : 'Rampex'} secure checkout...`, 'success');
+    window.location.href = link;
+  };
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -165,6 +207,134 @@ export function PaymentPage() {
         <h1 className="font-display font-bold text-3xl text-ocean-900 mb-2">Payment & Receipts</h1>
         <p className="text-slate-600">Submit your registration fee payment receipt for verification.</p>
       </div>
+
+      {/* Card Payment Section */}
+      <GlassCard className="mb-6 overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-ocean-600 to-ocean-800 flex items-center justify-center flex-shrink-0">
+              <CreditCard className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h3 className="font-display font-bold text-lg text-ocean-900">Pay with Card</h3>
+              <p className="text-sm text-slate-500">Secure international card payment</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-display font-extrabold text-3xl text-gradient-ocean">$90 USD</p>
+            <p className="text-xs text-slate-400">Registration Fee</p>
+          </div>
+        </div>
+
+        <p className="mt-4 text-sm text-slate-600">Pay your Ocean Goers application fee securely using Visa or Mastercard.</p>
+
+        <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-ocean-700 mb-1.5">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={cardName}
+                onChange={(e) => setCardName(e.target.value)}
+                placeholder="Enter your full name"
+                className="input-field pl-10"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-ocean-700 mb-1.5">Email Address</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                value={cardEmail}
+                onChange={(e) => setCardEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="input-field pl-10"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-ocean-700 mb-1.5">Phone Number</label>
+          <div className="flex gap-2">
+            <div className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setCardCountryOpen((v) => !v)}
+                className="input-field flex items-center gap-1.5 pr-2 whitespace-nowrap cursor-pointer"
+              >
+                <span className="text-lg leading-none">{COUNTRY_CODES.find((c) => c.code === cardCountryCode)?.flag ?? '🇦🇪'}</span>
+                <span className="text-sm font-medium text-ocean-800">{cardCountryCode}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+              {cardCountryOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setCardCountryOpen(false)} />
+                  <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl bg-white border border-slate-200 shadow-glass-lg py-1">
+                    {COUNTRY_CODES.map((c) => (
+                      <button
+                        key={`${c.flag}-${c.code}-${c.name}`}
+                        type="button"
+                        onClick={() => { setCardCountryCode(c.code); setCardCountryOpen(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-ocean-50 transition-colors text-left ${c.code === cardCountryCode ? 'bg-ocean-50 font-semibold text-ocean-800' : 'text-slate-700'}`}
+                      >
+                        <span className="text-lg leading-none">{c.flag}</span>
+                        <span className="flex-1">{c.name}</span>
+                        <span className="text-slate-500">{c.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="relative flex-1">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="tel"
+                value={cardPhone}
+                onChange={(e) => setCardPhone(e.target.value)}
+                placeholder="Enter your phone number"
+                className="input-field pl-10"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => handleCardPay('1pay')}
+            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-ocean-600 to-ocean-800 text-white font-display font-bold text-base hover:from-ocean-700 hover:to-ocean-900 transition-all duration-300 hover:shadow-lg hover:shadow-ocean-300/50 group"
+          >
+            <span className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Pay with 1Pay
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </span>
+            <span className="text-xs font-normal text-ocean-200">Visa · Mastercard · Crypto</span>
+          </button>
+          <button
+            onClick={() => handleCardPay('rampex')}
+            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-ocean-900 font-display font-bold text-base hover:from-gold-500 hover:to-gold-600 transition-all duration-300 hover:shadow-lg hover:shadow-gold-300/50 group"
+          >
+            <span className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Pay with Rampex
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </span>
+            <span className="text-xs font-normal text-ocean-800/70">Secure card checkout</span>
+          </button>
+        </div>
+
+        <div className="mt-4 p-3.5 rounded-xl bg-ocean-50 border border-ocean-100 flex items-start gap-2.5">
+          <Lock className="w-4 h-4 text-ocean-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-ocean-700 leading-relaxed">
+            Your card details are entered securely on the payment provider&apos;s website. Ocean Goers does not store your card number or CVV.
+          </p>
+        </div>
+      </GlassCard>
 
       {/* Documents incomplete warning */}
       {!requiredDocsComplete && (

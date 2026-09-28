@@ -98,7 +98,7 @@ export function PaymentPage() {
 
     const link = provider === '1pay' ? ONEPAY_LINK : RAMPEX_LINK;
     toast(`Redirecting to ${provider === '1pay' ? '1Pay' : 'Rampex'} secure checkout...`, 'success');
-    window.location.href = link;
+    window.open(link, '_blank', 'noopener,noreferrer');
   };
 
   const load = useCallback(async () => {
@@ -304,8 +304,11 @@ export function PaymentPage() {
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button
-            onClick={() => handleCardPay('1pay')}
+          <a
+            href={ONEPAY_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => { if (!cardName.trim() || !cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim()) || !cardPhone.trim()) { e.preventDefault(); handleCardPay('1pay'); } }}
             className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-ocean-600 to-ocean-800 text-white font-display font-bold text-base hover:from-ocean-700 hover:to-ocean-900 transition-all duration-300 hover:shadow-lg hover:shadow-ocean-300/50 group"
           >
             <span className="flex items-center gap-2">
@@ -314,9 +317,12 @@ export function PaymentPage() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
             <span className="text-xs font-normal text-ocean-200">Visa · Mastercard · Crypto</span>
-          </button>
-          <button
-            onClick={() => handleCardPay('rampex')}
+          </a>
+          <a
+            href={RAMPEX_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => { if (!cardName.trim() || !cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim()) || !cardPhone.trim()) { e.preventDefault(); handleCardPay('rampex'); } }}
             className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-ocean-900 font-display font-bold text-base hover:from-gold-500 hover:to-gold-600 transition-all duration-300 hover:shadow-lg hover:shadow-gold-300/50 group"
           >
             <span className="flex items-center gap-2">
@@ -325,7 +331,7 @@ export function PaymentPage() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
             <span className="text-xs font-normal text-ocean-800/70">Secure card checkout</span>
-          </button>
+          </a>
         </div>
 
         <div className="mt-4 p-3.5 rounded-xl bg-ocean-50 border border-ocean-100 flex items-start gap-2.5">

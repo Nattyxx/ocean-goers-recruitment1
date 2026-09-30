@@ -50,7 +50,6 @@ const COUNTRY_CODES = [
 ];
 
 const ONEPAY_LINK = 'https://1pay.cx/l/Hwzqtsd6';
-const RAMPEX_LINK = 'https://rampex.io/pay/sefnqNMx';
 
 interface Payment {
   id: string;
@@ -61,6 +60,16 @@ interface Payment {
   status: string;
   rejection_reason: string | null;
   created_at: string;
+}
+
+interface RampexPayment {
+  id?: string;
+  status: string;
+  verified: boolean;
+  amount?: number;
+  currency?: string;
+  created_at?: string;
+  paid_at?: string | null;
 }
 
 interface AppData {
@@ -90,29 +99,64 @@ export function PaymentPage() {
   const [cardPhone, setCardPhone] = useState('');
   const [cardCountryCode, setCardCountryCode] = useState('+971');
   const [cardCountryOpen, setCardCountryOpen] = useState(false);
+  const [rampexLoading, setRampexLoading] = useState(false);
+  const [rampexPayment, setRampexPayment] = useState<RampexPayment | null>(null);
 
   const handleCardPay = (provider: '1pay' | 'rampex') => {
     if (!cardName.trim()) { toast('Please enter your full name.', 'warning'); return; }
     if (!cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim())) { toast('Please enter a valid email address.', 'warning'); return; }
     if (!cardPhone.trim()) { toast('Please enter your phone number.', 'warning'); return; }
 
-    const link = provider === '1pay' ? ONEPAY_LINK : RAMPEX_LINK;
-    toast(`Redirecting to ${provider === '1pay' ? '1Pay' : 'Rampex'} secure checkout...`, 'success');
-    window.open(link, '_blank', 'noopener,noreferrer');
+    if (provider === 'rampex') {
+      handleRampexPay();
+      return;
+    }
+    toast('Redirecting to 1Pay secure checkout...', 'success');
+    window.open(ONEPAY_LINK, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleRampexPay = async () => {
+    if (!user || !application) {
+      toast('Application not found. Please submit an application first.', 'warning');
+      return;
+    }
+    setRampexLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-rampex-payment', {
+        body: {
+          name: cardName.trim(),
+          email: cardEmail.trim(),
+          phone: `${cardCountryCode} ${cardPhone.trim()}`,
+        },
+      });
+      if (error || !data?.success || !data.paymentUrl) {
+        throw new Error(data?.error ?? 'Failed to create payment');
+      }
+      toast('Secure payment page opened.', 'success');
+      window.open(data.paymentUrl, '_blank', 'noopener,noreferrer');
+      setRampexPayment({ status: 'pending', verified: false });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unable to create the payment. Please try again.';
+      toast(msg, 'error');
+    } finally {
+      setRampexLoading(false);
+    }
   };
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [payRes, appRes, docRes, cryptoRes] = await Promise.all([
+    const [payRes, appRes, docRes, cryptoRes, rampexRes] = await Promise.all([
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('applications').select('id, current_step, status').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('documents').select('doc_type').eq('user_id', user.id),
       supabase.from('crypto_payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('rampex_payments').select('id, status, verified, amount, currency, created_at, paid_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     setPayments((payRes.data as Payment[]) ?? []);
     setCryptoPayments((cryptoRes.data as CryptoPayment[]) ?? []);
     setApplication(appRes.data as AppData | null);
     setDocTypes([...new Set((docRes.data ?? []).map((d) => (d as { doc_type: string }).doc_type))]);
+    setRampexPayment((rampexRes.data as RampexPayment | null) ?? null);
     setLoading(false);
   }, [user]);
 
@@ -129,6 +173,26 @@ export function PaymentPage() {
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user || !rampexPayment || rampexPayment.verified) return;
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase
+        .from('rampex_payments')
+        .select('id, status, verified, amount, currency, created_at, paid_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setRampexPayment(data as RampexPayment);
+        if ((data as RampexPayment).verified) {
+          await load();
+        }
+      }
+    }, 15000);
+    return () => clearInterval(pollInterval);
+  }, [user, rampexPayment?.verified, load]);
 
   const requiredDocsComplete = REQUIRED_DOC_KEYS.every((k) => docTypes.includes(k));
   const latestPayment = payments[0] ?? null;
@@ -318,21 +382,47 @@ export function PaymentPage() {
             </span>
             <span className="text-xs font-normal text-ocean-200">Visa · Mastercard · Crypto</span>
           </a>
-          <a
-            href={RAMPEX_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { if (!cardName.trim() || !cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim()) || !cardPhone.trim()) { e.preventDefault(); handleCardPay('rampex'); } }}
-            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-ocean-900 font-display font-bold text-base hover:from-gold-500 hover:to-gold-600 transition-all duration-300 hover:shadow-lg hover:shadow-gold-300/50 group"
+          <button
+            type="button"
+            onClick={() => handleCardPay('rampex')}
+            disabled={rampexLoading || !requiredDocsComplete || !application}
+            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-ocean-900 font-display font-bold text-base hover:from-gold-500 hover:to-gold-600 transition-all duration-300 hover:shadow-lg hover:shadow-gold-300/50 group disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Pay with Rampex
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </span>
+            {rampexLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Preparing secure payment...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Pay with Rampex
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            )}
             <span className="text-xs font-normal text-ocean-800/70">Secure card checkout</span>
-          </a>
+          </button>
         </div>
+
+        {rampexPayment && (
+          <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 animate-scale-in ${rampexPayment.verified ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            {rampexPayment.verified ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <Loader2 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5 animate-spin" />
+            )}
+            <div>
+              <p className={`font-semibold ${rampexPayment.verified ? 'text-emerald-800' : 'text-amber-800'}`}>
+                {rampexPayment.verified ? 'Payment confirmed' : 'Payment submitted — awaiting confirmation.'}
+              </p>
+              <p className={`text-sm mt-0.5 ${rampexPayment.verified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {rampexPayment.verified
+                  ? 'Your $90 USD card payment has been verified. Your application is now under review.'
+                  : 'Payment is still being confirmed. This page will update automatically once confirmed.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 p-3.5 rounded-xl bg-ocean-50 border border-ocean-100 flex items-start gap-2.5">
           <Lock className="w-4 h-4 text-ocean-600 flex-shrink-0 mt-0.5" />

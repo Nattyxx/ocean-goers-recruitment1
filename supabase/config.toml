@@ -1,0 +1,20 @@
+[functions.send-email]
+verify_jwt = true
+
+[functions.verify-email]
+verify_jwt = false
+
+[functions.nowpayments-create]
+verify_jwt = true
+
+[functions.nowpayments-webhook]
+verify_jwt = false
+
+[functions.email-reminders]
+verify_jwt = false
+
+[functions.sitemap]
+verify_jwt = false
+
+[functions.rampex-webhook]
+verify_jwt = false

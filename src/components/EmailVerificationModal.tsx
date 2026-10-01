@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Ship, Mail, RefreshCw, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Ship, Mail, RefreshCw, ArrowRight, AlertCircle } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { Spinner } from './ui/Spinner';
-import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 
 const VERIFY_URL = `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/verify-email`;
 const RESEND_COOLDOWN = 60;
+const VERIFY_TIMEOUT_MS = 30_000;
 
 interface Props {
   open: boolean;
@@ -16,7 +16,6 @@ interface Props {
 }
 
 export function EmailVerificationModal({ open, email, onSuccess, onClose }: Props) {
-  const { signIn } = useAuth();
   const { toast } = useToast();
 
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
@@ -26,13 +25,14 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const hasSubmitted = useRef(false);
 
-  // Start cooldown timer when modal opens
   useEffect(() => {
     if (!open) return;
     setDigits(['', '', '', '', '', '']);
     setError(null);
     setCooldown(RESEND_COOLDOWN);
+    hasSubmitted.current = false;
   }, [open]);
 
   useEffect(() => {
@@ -49,6 +49,7 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
     next[idx] = v;
     setDigits(next);
     setError(null);
+    hasSubmitted.current = false;
     if (v && idx < 5) inputRefs.current[idx + 1]?.focus();
   };
 
@@ -67,37 +68,53 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
   };
 
   const handleVerify = useCallback(async () => {
-    if (code.length !== 6) return;
+    if (code.length !== 6 || hasSubmitted.current) return;
+    hasSubmitted.current = true;
     setVerifying(true);
     setError(null);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), VERIFY_TIMEOUT_MS);
+
     try {
       const res = await fetch(VERIFY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
         body: JSON.stringify({ action: 'verify', email, code }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         if (data.error === 'expired') {
           setError('Your verification code has expired. Please request a new one.');
+          hasSubmitted.current = false;
         } else if (data.error === 'incorrect_code') {
           setError('Incorrect code. Please check your email and try again.');
           setDigits(['', '', '', '', '', '']);
           inputRefs.current[0]?.focus();
+          hasSubmitted.current = false;
         } else if (data.error === 'already_exists') {
           setError('An account with this email already exists. Please close this dialog and sign in.');
+          hasSubmitted.current = false;
         } else {
           setError(data.error ?? 'Verification failed. Please try again.');
+          hasSubmitted.current = false;
         }
         return;
       }
 
-      // Account created — now sign them in
-      // We need the password; it was passed in via parent (stored in closure via prop)
-      // Actually we don't have the password here — the parent will handle sign-in
       toast('Email verified! Signing you in...', 'success');
       onSuccess();
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Verification is taking longer than expected. Please try again.');
+      } else {
+        setError('Network error. Please check your connection and try again.');
+      }
+      hasSubmitted.current = false;
     } finally {
       setVerifying(false);
     }
@@ -105,7 +122,7 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
 
   // Auto-submit when all 6 digits are filled
   useEffect(() => {
-    if (code.length === 6 && !verifying) {
+    if (code.length === 6 && !verifying && !hasSubmitted.current) {
       handleVerify();
     }
   }, [code, handleVerify, verifying]);
@@ -127,6 +144,7 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
       }
       setDigits(['', '', '', '', '', '']);
       setCooldown(RESEND_COOLDOWN);
+      hasSubmitted.current = false;
       inputRefs.current[0]?.focus();
       toast('A new code has been sent to your email.', 'success');
     } finally {

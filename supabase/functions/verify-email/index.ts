@@ -104,12 +104,14 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      // Check if this email already has a confirmed Supabase auth account
-      const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-      const alreadyExists = existingUsers?.users?.some(
-        (u) => u.email?.toLowerCase() === email.toLowerCase()
-      );
-      if (alreadyExists) {
+      // Check if this email already has a Supabase auth account
+      const { data: existingUser, error: lookupErr } = await adminClient.auth.admin.getUserByEmail(email);
+      if (lookupErr && lookupErr.message !== "User not found") {
+        return new Response(JSON.stringify({ success: false, error: "Could not verify email availability. Please try again." }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existingUser?.user) {
         return new Response(JSON.stringify({ success: false, error: "An account with this email already exists. Please sign in." }), {
           status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -228,7 +230,15 @@ Deno.serve(async (req: Request) => {
       });
 
       if (createErr || !newUser?.user) {
-        return new Response(JSON.stringify({ success: false, error: createErr?.message ?? "Failed to create account." }), {
+        // If the user already exists (e.g. race condition or pre-existing account),
+        // return a specific error so the frontend can redirect to login.
+        const msg = createErr?.message ?? "Failed to create account.";
+        if (msg.toLowerCase().includes("already") || msg.toLowerCase().includes("registered")) {
+          return new Response(JSON.stringify({ success: false, error: "already_exists" }), {
+            status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify({ success: false, error: msg }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

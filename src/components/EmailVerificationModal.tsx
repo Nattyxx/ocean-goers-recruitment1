@@ -85,6 +85,8 @@ export function EmailVerificationModal({ open, email, onSuccess, onClose }: Prop
           setError('Incorrect code. Please check your email and try again.');
           setDigits(['', '', '', '', '', '']);
           inputRefs.current[0]?.focus();
+        } else if (data.error === 'already_exists') {
+          setError('An account with this email already exists. Please close this dialog and sign in.');
         } else {
           setError(data.error ?? 'Verification failed. Please try again.');
         }

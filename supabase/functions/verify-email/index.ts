@@ -17,6 +17,26 @@ const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+async function emailExistsInAuth(targetEmail: string): Promise<{ exists: boolean; error?: string }> {
+  const normalized = targetEmail.trim().toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      return { exists: false, error: `Failed to check existing users: ${error.message}` };
+    }
+    const users = data?.users ?? [];
+    if (users.length === 0) return { exists: false };
+    if (users.some((u: { email?: string }) => u.email?.toLowerCase() === normalized)) {
+      return { exists: true };
+    }
+    if (users.length < perPage) return { exists: false };
+    page++;
+  }
+}
+
 function generateCode(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
@@ -105,14 +125,14 @@ Deno.serve(async (req: Request) => {
       }
 
       // Check if this email already has a Supabase auth account
-      const { data: existingUser, error: lookupErr } = await adminClient.auth.admin.getUserByEmail(email);
-      if (lookupErr && lookupErr.message !== "User not found") {
+      const { exists, error: lookupErr } = await emailExistsInAuth(email);
+      if (lookupErr) {
         return new Response(JSON.stringify({ success: false, error: "Could not verify email availability. Please try again." }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (existingUser?.user) {
-        return new Response(JSON.stringify({ success: false, error: "An account with this email already exists. Please sign in." }), {
+      if (exists) {
+        return new Response(JSON.stringify({ success: false, error: "already_exists" }), {
           status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

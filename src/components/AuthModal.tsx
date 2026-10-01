@@ -68,7 +68,12 @@ export function AuthModal({
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          toast(data.error ?? 'Could not send verification email. Please try again.', 'error');
+          if (data.error === 'already_exists') {
+            toast('An account with this email already exists. Please sign in.', 'error');
+            switchMode('login');
+          } else {
+            toast(data.error ?? 'Could not send verification email. Please try again.', 'error');
+          }
         } else {
           setPendingEmail(email);
           setPendingPassword(password);

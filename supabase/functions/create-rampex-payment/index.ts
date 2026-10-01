@@ -186,6 +186,17 @@ Deno.serve(async (req: Request) => {
     }
 
     const rampexData = await rampexRes.json() as {
+      success?: boolean;
+      data?: {
+        link_id?: string;
+        payment_link_id?: string;
+        payment_url?: string;
+        redirect_url?: string;
+        url?: string;
+        payment_link?: string;
+        link?: string;
+        short_url?: string;
+      };
       link_id?: string;
       payment_link_id?: string;
       payment_url?: string;
@@ -194,8 +205,9 @@ Deno.serve(async (req: Request) => {
       link?: string;
     };
 
-    const linkId = rampexData.link_id ?? rampexData.payment_link_id ?? "";
-    const paymentUrl = rampexData.payment_url ?? rampexData.url ?? rampexData.payment_link ?? rampexData.link ?? "";
+    const inner = rampexData.data ?? rampexData;
+    const linkId = inner.link_id ?? inner.payment_link_id ?? "";
+    const paymentUrl = inner.payment_url ?? inner.redirect_url ?? inner.url ?? inner.payment_link ?? inner.link ?? inner.short_url ?? "";
 
     if (!linkId || !paymentUrl) {
       if (paymentRecordId) {

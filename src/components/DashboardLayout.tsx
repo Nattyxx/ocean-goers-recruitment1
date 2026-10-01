@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import {
   LayoutDashboard, FileText, Upload, CreditCard, Calendar, MessageSquare,
-  Bell, BookOpen, User, LifeBuoy, LogOut, Menu, X, Settings, ChevronRight,
+  Bell, BookOpen, User, LifeBuoy, LogOut, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -59,17 +59,6 @@ export function DashboardLayout({ currentPage, onNavigate, onSignOut, children }
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/10">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-ocean-600 to-ocean-800 flex items-center justify-center flex-shrink-0">
-          <LayoutDashboard className="w-5 h-5 text-gold-400" />
-        </div>
-        <div>
-          <p className="font-display font-bold text-white text-sm leading-none">Ocean Goers</p>
-          <p className="text-[10px] text-ocean-300 tracking-widest uppercase mt-0.5">Dashboard</p>
-        </div>
-      </div>
-
       {/* Nav items */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
@@ -117,7 +106,7 @@ export function DashboardLayout({ currentPage, onNavigate, onSignOut, children }
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-gradient-to-b from-ocean-900 to-ocean-950 fixed inset-y-0 left-0 z-30">
+      <aside className="hidden lg:flex flex-col w-64 bg-gradient-to-b from-ocean-900 to-ocean-950 fixed top-16 bottom-0 left-0 z-30">
         {sidebarContent}
       </aside>
 
@@ -136,35 +125,30 @@ export function DashboardLayout({ currentPage, onNavigate, onSignOut, children }
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-        {/* Dashboard Header */}
-        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 h-16 flex items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg text-ocean-700 hover:bg-slate-100"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-ocean-600 to-ocean-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-5 h-5 text-gold-400" />
-                )}
-              </div>
-              <div className="hidden sm:block">
-                <p className="font-display font-semibold text-sm text-ocean-900 leading-none">{profile?.full_name ?? 'Applicant'}</p>
-                {appStatus && <div className="mt-1"><StatusBadge status={appStatus as any} size="sm" /></div>}
-              </div>
+        {/* Mobile dashboard menu trigger — part of content flow, not a duplicate header */}
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg text-ocean-700 hover:bg-slate-100"
+            aria-label="Open dashboard menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-ocean-600 to-ocean-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-4 h-4 text-gold-400" />
+              )}
             </div>
+            <p className="font-medium text-sm text-ocean-900">{profile?.full_name ?? 'Applicant'}</p>
+            {appStatus && <StatusBadge status={appStatus as any} size="sm" />}
           </div>
-
-          <div className="flex items-center gap-1.5">
+          <div className="ml-auto flex items-center gap-1.5">
             <button
               onClick={() => onNavigate('notifications')}
-              className="relative p-2.5 rounded-xl text-ocean-700 hover:bg-ocean-50 transition-colors"
+              className="relative p-2 rounded-xl text-ocean-700 hover:bg-ocean-50 transition-colors"
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" />
@@ -176,7 +160,7 @@ export function DashboardLayout({ currentPage, onNavigate, onSignOut, children }
             </button>
             <button
               onClick={() => onNavigate('messages')}
-              className="relative p-2.5 rounded-xl text-ocean-700 hover:bg-ocean-50 transition-colors"
+              className="relative p-2 rounded-xl text-ocean-700 hover:bg-ocean-50 transition-colors"
               aria-label="Messages"
             >
               <MessageSquare className="w-5 h-5" />
@@ -186,15 +170,8 @@ export function DashboardLayout({ currentPage, onNavigate, onSignOut, children }
                 </span>
               )}
             </button>
-            <button
-              onClick={() => onNavigate('settings')}
-              className="p-2.5 rounded-xl text-ocean-700 hover:bg-ocean-50 transition-colors"
-              aria-label="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
-        </header>
+        </div>
 
         {/* Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function HomePage({ onNavigate }: Props) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [statusOpen, setStatusOpen] = useState(false);
@@ -51,6 +51,8 @@ export function HomePage({ onNavigate }: Props) {
         onApply={handleApply}
         onLogin={() => openAuth('login')}
         onStatus={() => setStatusOpen(true)}
+        isApplicant={!!user && !profile?.is_admin}
+        onDashboard={() => onNavigate('dashboard')}
       />
       <StatsSection />
       <AboutSection />

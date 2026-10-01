@@ -37,7 +37,7 @@ function AnimatedNumber({ value, suffix, inView }: { value: number; suffix: stri
   return <span>{n.toLocaleString()}{suffix}</span>;
 }
 
-export function Hero({ onApply, onLogin, onStatus }: { onApply: () => void; onLogin: () => void; onStatus: () => void; }) {
+export function Hero({ onApply, onLogin, onStatus, isApplicant, onDashboard }: { onApply: () => void; onLogin: () => void; onStatus: () => void; isApplicant: boolean; onDashboard: () => void; }) {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
@@ -86,7 +86,14 @@ export function Hero({ onApply, onLogin, onStatus }: { onApply: () => void; onLo
             Apply Now
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
-          <button onClick={onLogin} className="btn-ghost">Login</button>
+          {isApplicant ? (
+            <button onClick={onDashboard} className="btn-ghost flex items-center gap-2 group">
+              Dashboard
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          ) : (
+            <button onClick={onLogin} className="btn-ghost">Login</button>
+          )}
           <button onClick={onStatus} className="btn-ghost border-gold-400/40 text-gold-300 hover:bg-gold-400/10">
             Check Application Status
           </button>

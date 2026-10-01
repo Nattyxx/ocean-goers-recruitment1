@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw, Bitcoin, ShieldCheck, ArrowRight, AlertCircle, Lock, User, Mail, Phone, ChevronDown } from 'lucide-react';
+import { CreditCard, Upload, CheckCircle2, FileText, Loader2, Receipt, Copy, Landmark, Smartphone, Globe, Building2, AlertTriangle, Info, XCircle, RefreshCw, Bitcoin, ShieldCheck, ArrowRight, AlertCircle, Lock, User, Mail } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { useToast } from '../lib/toast';
 import { supabase } from '../lib/supabase';
@@ -7,6 +7,7 @@ import { GlassCard } from '../components/ui/GlassCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Spinner } from '../components/ui/Spinner';
+import { PhoneInput } from '../components/ui/PhoneInput';
 import { PAYMENT_METHODS, PAYMENT_ACCOUNTS, REQUIRED_DOC_KEYS } from '../lib/constants';
 import { logActivity } from '../lib/activity';
 
@@ -26,28 +27,6 @@ interface CryptoPayment {
 
 const accountIcons: Record<string, typeof Landmark> = { Landmark, Smartphone, Globe };
 
-const COUNTRY_CODES = [
-  { code: '+971', flag: '🇦🇪', name: 'UAE' },
-  { code: '+251', flag: '🇪🇹', name: 'Ethiopia' },
-  { code: '+1', flag: '🇺🇸', name: 'USA' },
-  { code: '+44', flag: '🇬🇧', name: 'UK' },
-  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
-  { code: '+974', flag: '🇶🇦', name: 'Qatar' },
-  { code: '+254', flag: '🇰🇪', name: 'Kenya' },
-  { code: '+256', flag: '🇺🇬', name: 'Uganda' },
-  { code: '+255', flag: '🇹🇿', name: 'Tanzania' },
-  { code: '+27', flag: '🇿🇦', name: 'South Africa' },
-  { code: '+91', flag: '🇮🇳', name: 'India' },
-  { code: '+86', flag: '🇨🇳', name: 'China' },
-  { code: '+33', flag: '🇫🇷', name: 'France' },
-  { code: '+49', flag: '🇩🇪', name: 'Germany' },
-  { code: '+39', flag: '🇮🇹', name: 'Italy' },
-  { code: '+34', flag: '🇪🇸', name: 'Spain' },
-  { code: '+81', flag: '🇯🇵', name: 'Japan' },
-  { code: '+82', flag: '🇰🇷', name: 'South Korea' },
-  { code: '+61', flag: '🇦🇺', name: 'Australia' },
-  { code: '+1', flag: '🇨🇦', name: 'Canada' },
-];
 
 
 interface Payment {
@@ -106,8 +85,7 @@ export function PaymentPage() {
   const [cardName, setCardName] = useState('');
   const [cardEmail, setCardEmail] = useState('');
   const [cardPhone, setCardPhone] = useState('');
-  const [cardCountryCode, setCardCountryCode] = useState('+971');
-  const [cardCountryOpen, setCardCountryOpen] = useState(false);
+  const [cardPhoneValid, setCardPhoneValid] = useState(false);
   const [rampexLoading, setRampexLoading] = useState(false);
   const [rampexPayment, setRampexPayment] = useState<RampexPayment | null>(null);
   const [onepayLoading, setOnepayLoading] = useState(false);
@@ -117,6 +95,7 @@ export function PaymentPage() {
     if (!cardName.trim()) { toast('Please enter your full name.', 'warning'); return; }
     if (!cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim())) { toast('Please enter a valid email address.', 'warning'); return; }
     if (!cardPhone.trim()) { toast('Please enter your phone number.', 'warning'); return; }
+    if (!cardPhoneValid) { toast('Please enter a valid phone number for the selected country.', 'warning'); return; }
 
     if (provider === 'rampex') {
       handleRampexPay();
@@ -136,7 +115,7 @@ export function PaymentPage() {
         body: {
           name: cardName.trim(),
           email: cardEmail.trim(),
-          phone: `${cardCountryCode} ${cardPhone.trim()}`,
+          phone: cardPhone,
         },
       });
       if (error || !data?.success || !data.paymentUrl) {
@@ -164,7 +143,7 @@ export function PaymentPage() {
         body: {
           name: cardName.trim(),
           email: cardEmail.trim(),
-          phone: `${cardCountryCode} ${cardPhone.trim()}`,
+          phone: cardPhone,
         },
       });
       if (error || !data?.success || !data.paymentUrl) {
@@ -383,48 +362,11 @@ export function PaymentPage() {
 
         <div className="mt-4">
           <label className="block text-sm font-medium text-ocean-700 mb-1.5">Phone Number</label>
-          <div className="flex gap-2">
-            <div className="relative flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setCardCountryOpen((v) => !v)}
-                className="input-field flex items-center gap-1.5 pr-2 whitespace-nowrap cursor-pointer"
-              >
-                <span className="text-lg leading-none">{COUNTRY_CODES.find((c) => c.code === cardCountryCode)?.flag ?? '🇦🇪'}</span>
-                <span className="text-sm font-medium text-ocean-800">{cardCountryCode}</span>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              </button>
-              {cardCountryOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setCardCountryOpen(false)} />
-                  <div className="absolute z-20 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl bg-white border border-slate-200 shadow-glass-lg py-1">
-                    {COUNTRY_CODES.map((c) => (
-                      <button
-                        key={`${c.flag}-${c.code}-${c.name}`}
-                        type="button"
-                        onClick={() => { setCardCountryCode(c.code); setCardCountryOpen(false); }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-ocean-50 transition-colors text-left ${c.code === cardCountryCode ? 'bg-ocean-50 font-semibold text-ocean-800' : 'text-slate-700'}`}
-                      >
-                        <span className="text-lg leading-none">{c.flag}</span>
-                        <span className="flex-1">{c.name}</span>
-                        <span className="text-slate-500">{c.code}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="relative flex-1">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              <input
-                type="tel"
-                value={cardPhone}
-                onChange={(e) => setCardPhone(e.target.value)}
-                placeholder="Enter your phone number"
-                className="input-field pl-10"
-              />
-            </div>
-          </div>
+          <PhoneInput
+            value={profile?.phone ?? ''}
+            onChange={(e164, isValid) => { setCardPhone(e164); setCardPhoneValid(isValid); }}
+            defaultCountryIso2="AE"
+          />
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">

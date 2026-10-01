@@ -49,7 +49,6 @@ const COUNTRY_CODES = [
   { code: '+1', flag: '🇨🇦', name: 'Canada' },
 ];
 
-const ONEPAY_LINK = 'https://1pay.cx/l/Hwzqtsd6';
 
 interface Payment {
   id: string;
@@ -63,6 +62,16 @@ interface Payment {
 }
 
 interface RampexPayment {
+  id?: string;
+  status: string;
+  verified: boolean;
+  amount?: number;
+  currency?: string;
+  created_at?: string;
+  paid_at?: string | null;
+}
+
+interface OnePayPayment {
   id?: string;
   status: string;
   verified: boolean;
@@ -101,6 +110,8 @@ export function PaymentPage() {
   const [cardCountryOpen, setCardCountryOpen] = useState(false);
   const [rampexLoading, setRampexLoading] = useState(false);
   const [rampexPayment, setRampexPayment] = useState<RampexPayment | null>(null);
+  const [onepayLoading, setOnepayLoading] = useState(false);
+  const [onepayPayment, setOnepayPayment] = useState<OnePayPayment | null>(null);
 
   const handleCardPay = (provider: '1pay' | 'rampex') => {
     if (!cardName.trim()) { toast('Please enter your full name.', 'warning'); return; }
@@ -111,8 +122,35 @@ export function PaymentPage() {
       handleRampexPay();
       return;
     }
-    toast('Redirecting to 1Pay secure checkout...', 'success');
-    window.open(ONEPAY_LINK, '_blank', 'noopener,noreferrer');
+    handleOnepayPay();
+  };
+
+  const handleOnepayPay = async () => {
+    if (!user || !application) {
+      toast('Application not found. Please submit an application first.', 'warning');
+      return;
+    }
+    setOnepayLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-1pay-payment', {
+        body: {
+          name: cardName.trim(),
+          email: cardEmail.trim(),
+          phone: `${cardCountryCode} ${cardPhone.trim()}`,
+        },
+      });
+      if (error || !data?.success || !data.paymentUrl) {
+        throw new Error(data?.error ?? 'Failed to create payment');
+      }
+      toast('Secure payment page opened.', 'success');
+      window.open(data.paymentUrl, '_blank', 'noopener,noreferrer');
+      setOnepayPayment({ status: 'pending', verified: false });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unable to create the payment. Please try again.';
+      toast(msg, 'error');
+    } finally {
+      setOnepayLoading(false);
+    }
   };
 
   const handleRampexPay = async () => {
@@ -145,18 +183,20 @@ export function PaymentPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [payRes, appRes, docRes, cryptoRes, rampexRes] = await Promise.all([
+    const [payRes, appRes, docRes, cryptoRes, rampexRes, onepayRes] = await Promise.all([
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('applications').select('id, current_step, status').eq('user_id', user.id).order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('documents').select('doc_type').eq('user_id', user.id),
       supabase.from('crypto_payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('rampex_payments').select('id, status, verified, amount, currency, created_at, paid_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('onepay_payments').select('id, status, verified, amount, currency, created_at, paid_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
     setPayments((payRes.data as Payment[]) ?? []);
     setCryptoPayments((cryptoRes.data as CryptoPayment[]) ?? []);
     setApplication(appRes.data as AppData | null);
     setDocTypes([...new Set((docRes.data ?? []).map((d) => (d as { doc_type: string }).doc_type))]);
     setRampexPayment((rampexRes.data as RampexPayment | null) ?? null);
+    setOnepayPayment((onepayRes.data as OnePayPayment | null) ?? null);
     setLoading(false);
   }, [user]);
 
@@ -193,6 +233,26 @@ export function PaymentPage() {
     }, 15000);
     return () => clearInterval(pollInterval);
   }, [user, rampexPayment?.verified, load]);
+
+  useEffect(() => {
+    if (!user || !onepayPayment || onepayPayment.verified) return;
+    const pollInterval = setInterval(async () => {
+      const { data } = await supabase
+        .from('onepay_payments')
+        .select('id, status, verified, amount, currency, created_at, paid_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setOnepayPayment(data as OnePayPayment);
+        if ((data as OnePayPayment).verified) {
+          await load();
+        }
+      }
+    }, 15000);
+    return () => clearInterval(pollInterval);
+  }, [user, onepayPayment?.verified, load]);
 
   const requiredDocsComplete = REQUIRED_DOC_KEYS.every((k) => docTypes.includes(k));
   const latestPayment = payments[0] ?? null;
@@ -368,20 +428,26 @@ export function PaymentPage() {
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a
-            href={ONEPAY_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { if (!cardName.trim() || !cardEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail.trim()) || !cardPhone.trim()) { e.preventDefault(); handleCardPay('1pay'); } }}
-            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-ocean-600 to-ocean-800 text-white font-display font-bold text-base hover:from-ocean-700 hover:to-ocean-900 transition-all duration-300 hover:shadow-lg hover:shadow-ocean-300/50 group"
+          <button
+            type="button"
+            onClick={() => handleCardPay('1pay')}
+            disabled={onepayLoading || !requiredDocsComplete || !application}
+            className="flex flex-col items-center justify-center gap-1 py-4 rounded-xl bg-gradient-to-r from-ocean-600 to-ocean-800 text-white font-display font-bold text-base hover:from-ocean-700 hover:to-ocean-900 transition-all duration-300 hover:shadow-lg hover:shadow-ocean-300/50 group disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Pay with 1Pay
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </span>
+            {onepayLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Preparing secure payment...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Pay with 1Pay
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            )}
             <span className="text-xs font-normal text-ocean-200">Visa · Mastercard · Crypto</span>
-          </a>
+          </button>
           <button
             type="button"
             onClick={() => handleCardPay('rampex')}
@@ -417,6 +483,26 @@ export function PaymentPage() {
               </p>
               <p className={`text-sm mt-0.5 ${rampexPayment.verified ? 'text-emerald-600' : 'text-amber-600'}`}>
                 {rampexPayment.verified
+                  ? 'Your $90 USD card payment has been verified. Your application is now under review.'
+                  : 'Payment is still being confirmed. This page will update automatically once confirmed.'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {onepayPayment && (
+          <div className={`mt-4 p-4 rounded-xl border flex items-start gap-3 animate-scale-in ${onepayPayment.verified ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            {onepayPayment.verified ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <Loader2 className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5 animate-spin" />
+            )}
+            <div>
+              <p className={`font-semibold ${onepayPayment.verified ? 'text-emerald-800' : 'text-amber-800'}`}>
+                {onepayPayment.verified ? 'Payment confirmed' : 'Payment submitted — awaiting confirmation.'}
+              </p>
+              <p className={`text-sm mt-0.5 ${onepayPayment.verified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                {onepayPayment.verified
                   ? 'Your $90 USD card payment has been verified. Your application is now under review.'
                   : 'Payment is still being confirmed. This page will update automatically once confirmed.'}
               </p>

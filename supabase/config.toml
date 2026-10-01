@@ -21,3 +21,9 @@ verify_jwt = false
 
 [functions.create-rampex-payment]
 verify_jwt = true
+
+[functions.create-1pay-payment]
+verify_jwt = true
+
+[functions.onepay-webhook]
+verify_jwt = false

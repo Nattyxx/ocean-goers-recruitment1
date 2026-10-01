@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const RAMPEX_API_KEY = Deno.env.get("RAMPEX_API_KEY") ?? Deno.env.get("Rampex_API_Secret") ?? "";
+const RAMPEX_API_KEY = Deno.env.get("Rampex_API_Secret") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 

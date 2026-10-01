@@ -3,7 +3,7 @@ import {
   Search, Filter, CheckCircle2, XCircle, Eye, Phone, Mail, Briefcase, Clock,
   FileText, Calendar, Users, TrendingUp, AlertCircle, ChevronDown, X,
   Download, ExternalLink, Loader2, ArrowRightCircle, CreditCard, Receipt,
-  Send, MailCheck, RotateCw, History, Bitcoin, Mail as MailIcon,
+  Send, MailCheck, RotateCw, History, Mail as MailIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth';
@@ -57,6 +57,67 @@ interface AdminCryptoPayment {
   created_at: string;
 }
 
+interface UnifiedPayment {
+  id: string;
+  provider: 'NOWPayments' | '1Pay' | 'Rampex' | 'Manual / ETB';
+  method: string;
+  applicantName: string | null;
+  email: string | null;
+  orderId: string | null;
+  paymentId: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  verified: boolean;
+  transactionHash: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  applicationId: string | null;
+  userId: string | null;
+  checkoutUrl?: string | null;
+  livemode?: boolean | null;
+  rawProvider: string;
+}
+
+interface AdminOnePayPayment {
+  id: string;
+  user_id: string | null;
+  application_id: string | null;
+  customer_email: string | null;
+  applicant_name: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  verified: boolean;
+  internal_order_id: string | null;
+  onepay_payment_id: string | null;
+  checkout_url: string | null;
+  reference: string | null;
+  webhook_event: string | null;
+  livemode: boolean | null;
+  txid_out: string | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
+interface AdminRampexPayment {
+  id: string;
+  user_id: string | null;
+  application_id: string | null;
+  customer_email: string | null;
+  applicant_name: string | null;
+  amount: number | null;
+  currency: string | null;
+  status: string | null;
+  verified: boolean | null;
+  internal_order_id: string | null;
+  link_id: string | null;
+  payment_url: string | null;
+  transaction_hash: string | null;
+  paid_at: string | null;
+  created_at: string;
+}
+
 interface AdminApp {
   id: string;
   user_id: string;
@@ -105,6 +166,10 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   const [cryptoPays, setCryptoPays] = useState<AdminCryptoPayment[]>([]);
   const [cryptoSearch, setCryptoSearch] = useState('');
   const [cryptoStatusFilter, setCryptoStatusFilter] = useState('All');
+  const [onepayPays, setOnepayPays] = useState<AdminOnePayPayment[]>([]);
+  const [rampexPays, setRampexPays] = useState<AdminRampexPayment[]>([]);
+  const [paymentProviderFilter, setPaymentProviderFilter] = useState('All');
+  const [paymentDetail, setPaymentDetail] = useState<UnifiedPayment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [emailModalRecipients, setEmailModalRecipients] = useState<ManualEmailRecipient[]>([]);
   const [applicantEmailHistory, setApplicantEmailHistory] = useState<EmailLogRow[]>([]);
@@ -174,6 +239,158 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
     setCryptoPays((data as AdminCryptoPayment[]) ?? []);
   }, [toast]);
 
+  const loadOnepayPays = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('onepay_payments')
+      .select('id, user_id, application_id, customer_email, applicant_name, amount, currency, status, verified, internal_order_id, onepay_payment_id, checkout_url, reference, webhook_event, livemode, txid_out, paid_at, created_at')
+      .order('created_at', { ascending: false });
+    if (error) { toast(error.message, 'error'); return; }
+    setOnepayPays((data as AdminOnePayPayment[]) ?? []);
+  }, [toast]);
+
+  const loadRampexPays = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('rampex_payments')
+      .select('id, user_id, application_id, customer_email, applicant_name, amount, currency, status, verified, internal_order_id, link_id, payment_url, transaction_hash, paid_at, created_at')
+      .order('created_at', { ascending: false });
+    if (error) { toast(error.message, 'error'); return; }
+    setRampexPays((data as AdminRampexPayment[]) ?? []);
+  }, [toast]);
+
+  const loadAllPayments = useCallback(async () => {
+    await Promise.all([loadCryptoPays(), loadOnepayPays(), loadRampexPays(), loadApps()]);
+  }, [loadCryptoPays, loadOnepayPays, loadRampexPays, loadApps]);
+
+  const unifiedPayments = useMemo((): UnifiedPayment[] => {
+    const manual: UnifiedPayment[] = apps.flatMap((a) =>
+      a.payments.map((p): UnifiedPayment => ({
+        id: `manual-${p.id}`,
+        provider: 'Manual / ETB',
+        method: p.method ?? 'Manual',
+        applicantName: a.profile?.full_name ?? null,
+        email: a.profile?.email ?? null,
+        orderId: null,
+        paymentId: p.id,
+        amount: p.amount,
+        currency: p.currency,
+        status: p.status,
+        verified: p.status === 'Verified',
+        transactionHash: null,
+        paidAt: null,
+        createdAt: p.created_at,
+        applicationId: a.id,
+        userId: a.user_id,
+        rawProvider: 'manual',
+      }))
+    );
+
+    const crypto: UnifiedPayment[] = cryptoPays.map((cp): UnifiedPayment => ({
+      id: `np-${cp.id}`,
+      provider: 'NOWPayments',
+      method: `USDT (${cp.pay_currency ?? 'TRC20'})`,
+      applicantName: cp.applicant_name,
+      email: cp.email,
+      orderId: cp.order_id,
+      paymentId: cp.nowpayments_id,
+      amount: cp.amount,
+      currency: cp.currency,
+      status: cp.status,
+      verified: cp.status === 'confirmed' || cp.status === 'finished',
+      transactionHash: cp.transaction_hash,
+      paidAt: cp.payment_date,
+      createdAt: cp.created_at,
+      applicationId: null,
+      userId: cp.user_id,
+      rawProvider: 'nowpayments',
+    }));
+
+    const onepay: UnifiedPayment[] = onepayPays.map((op): UnifiedPayment => ({
+      id: `1pay-${op.id}`,
+      provider: '1Pay',
+      method: 'Card (1Pay)',
+      applicantName: op.applicant_name,
+      email: op.customer_email,
+      orderId: op.internal_order_id,
+      paymentId: op.onepay_payment_id,
+      amount: Number(op.amount),
+      currency: op.currency,
+      status: op.verified ? 'Verified' : op.status,
+      verified: op.verified,
+      transactionHash: op.txid_out,
+      paidAt: op.paid_at,
+      createdAt: op.created_at,
+      applicationId: op.application_id,
+      userId: op.user_id,
+      checkoutUrl: op.checkout_url,
+      livemode: op.livemode,
+      rawProvider: '1pay',
+    }));
+
+    const rampex: UnifiedPayment[] = rampexPays.map((rp): UnifiedPayment => ({
+      id: `rampex-${rp.id}`,
+      provider: 'Rampex',
+      method: 'Card (Rampex)',
+      applicantName: rp.applicant_name,
+      email: rp.customer_email,
+      orderId: rp.internal_order_id,
+      paymentId: rp.link_id,
+      amount: Number(rp.amount ?? 0),
+      currency: rp.currency ?? 'USD',
+      status: rp.verified ? 'Verified' : (rp.status ?? 'pending'),
+      verified: Boolean(rp.verified),
+      transactionHash: rp.transaction_hash,
+      paidAt: rp.paid_at,
+      createdAt: rp.created_at,
+      applicationId: rp.application_id,
+      userId: rp.user_id,
+      checkoutUrl: rp.payment_url,
+      rawProvider: 'rampex',
+    }));
+
+    return [...manual, ...crypto, ...onepay, ...rampex].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [apps, cryptoPays, onepayPays, rampexPays]);
+
+  const paymentStatuses = useMemo(() => {
+    const set = new Set<string>();
+    unifiedPayments.forEach((p) => set.add(p.status));
+    return ['All', ...Array.from(set).sort()] as const;
+  }, [unifiedPayments]);
+
+  const filteredPayments = useMemo(() => {
+    return unifiedPayments.filter((p) => {
+      const matchesProvider = paymentProviderFilter === 'All' || p.provider === paymentProviderFilter;
+      const matchesStatus = cryptoStatusFilter === 'All' || p.status.toLowerCase() === cryptoStatusFilter.toLowerCase();
+      const q = cryptoSearch.trim().toLowerCase();
+      const matchesSearch =
+        !q ||
+        (p.applicantName?.toLowerCase().includes(q) ?? false) ||
+        (p.email?.toLowerCase().includes(q) ?? false) ||
+        (p.orderId?.toLowerCase().includes(q) ?? false) ||
+        (p.paymentId?.toLowerCase().includes(q) ?? false);
+      return matchesProvider && matchesStatus && matchesSearch;
+    });
+  }, [unifiedPayments, paymentProviderFilter, cryptoStatusFilter, cryptoSearch]);
+
+  const exportPaymentsCsv = () => {
+    const headers = ['Applicant', 'Email', 'Provider', 'Method', 'Order ID', 'Payment ID', 'Amount', 'Currency', 'Status', 'Verified', 'Transaction', 'Date'];
+    const rows = filteredPayments.map((p) => [
+      p.applicantName ?? '', p.email ?? '', p.provider, p.method,
+      p.orderId ?? '', p.paymentId ?? '', String(p.amount), p.currency,
+      p.status, p.verified ? 'Yes' : 'No', p.transactionHash ?? '',
+      new Date(p.createdAt).toISOString(),
+    ].map((v) => `"${v.replace(/"/g, '""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const loadEmailLogs = useCallback(async () => {
     setEmailLogLoading(true);
     const logs = await fetchEmailLogs();
@@ -182,7 +399,7 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   }, []);
 
   useEffect(() => {
-    if (profile?.is_admin) { loadApps(); loadEmailLogs(); loadCryptoPays(); }
+    if (profile?.is_admin) { loadApps(); loadEmailLogs(); loadCryptoPays(); loadOnepayPays(); loadRampexPays(); }
     else setLoading(false);
   }, [profile, loadApps, loadEmailLogs, loadCryptoPays]);
 
@@ -386,44 +603,6 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
   useEffect(() => {
     if (selected) loadApplicantEmailHistory(selected.user_id);
   }, [selected, loadApplicantEmailHistory]);
-
-  const cryptoFiltered = useMemo(() => {
-    return cryptoPays.filter((cp) => {
-      const matchesStatus = cryptoStatusFilter === 'All' || cp.status.toLowerCase() === cryptoStatusFilter.toLowerCase();
-      const q = cryptoSearch.trim().toLowerCase();
-      const matchesSearch =
-        !q ||
-        (cp.applicant_name?.toLowerCase().includes(q) ?? false) ||
-        (cp.email?.toLowerCase().includes(q) ?? false) ||
-        (cp.order_id?.toLowerCase().includes(q) ?? false) ||
-        (cp.nowpayments_id?.toLowerCase().includes(q) ?? false);
-      return matchesStatus && matchesSearch;
-    });
-  }, [cryptoPays, cryptoStatusFilter, cryptoSearch]);
-
-  const exportCryptoCsv = () => {
-    const headers = ['Applicant Name', 'Email', 'Order ID', 'NOWPayments ID', 'Amount', 'Currency', 'Transaction Hash', 'Status', 'Payment Date', 'Created At'];
-    const rows = cryptoFiltered.map((cp) => [
-      cp.applicant_name ?? '',
-      cp.email ?? '',
-      cp.order_id ?? '',
-      cp.nowpayments_id ?? '',
-      String(cp.amount),
-      cp.currency,
-      cp.transaction_hash ?? '',
-      cp.status,
-      cp.payment_date ? new Date(cp.payment_date).toISOString() : '',
-      new Date(cp.created_at).toISOString(),
-    ].map((v) => `"${v.replace(/"/g, '""')}"`).join(','));
-    const csv = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `crypto-payments-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (!profile?.is_admin) {
     return (
@@ -755,15 +934,15 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
         </GlassCard>
       </div>
 
-      {/* Crypto Payments section */}
+      {/* All Payments section */}
       <div className="mt-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <h2 className="font-display font-bold text-xl text-ocean-900 flex items-center gap-2">
-            <Bitcoin className="w-5 h-5 text-emerald-600" /> Crypto Payments
+            <CreditCard className="w-5 h-5 text-ocean-600" /> All Payments
           </h2>
           <div className="flex items-center gap-2">
-            <button onClick={loadCryptoPays} className="btn-ghost text-sm">Refresh</button>
-            <button onClick={exportCryptoCsv} disabled={cryptoFiltered.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50">
+            <button onClick={loadAllPayments} className="btn-ghost text-sm">Refresh</button>
+            <button onClick={exportPaymentsCsv} disabled={filteredPayments.length === 0} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-colors disabled:opacity-50">
               <Download className="w-4 h-4" /> Export CSV
             </button>
           </div>
@@ -778,8 +957,15 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
             </div>
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
+              <select value={paymentProviderFilter} onChange={(e) => setPaymentProviderFilter(e.target.value)} className="input-field pl-11 pr-8 appearance-none cursor-pointer">
+                {['All', '1Pay', 'Rampex', 'NOWPayments', 'Manual / ETB'].map((p) => <option key={p} value={p}>{p === 'All' ? 'All Providers' : p}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
               <select value={cryptoStatusFilter} onChange={(e) => setCryptoStatusFilter(e.target.value)} className="input-field pl-11 pr-8 appearance-none cursor-pointer">
-                {['All', 'waiting', 'confirming', 'confirmed', 'finished', 'failed', 'expired', 'refunded'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                {paymentStatuses.map((s) => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
@@ -787,10 +973,10 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
         </GlassCard>
 
         <GlassCard>
-          {cryptoFiltered.length === 0 ? (
+          {filteredPayments.length === 0 ? (
             <div className="text-center py-12">
-              <Bitcoin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">No crypto payments found.</p>
+              <CreditCard className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-slate-500">No payments found.</p>
             </div>
           ) : (
             <div className="overflow-x-auto -mx-2">
@@ -799,32 +985,55 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
                   <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                     <th className="px-3 py-3 font-semibold">Applicant</th>
                     <th className="px-3 py-3 font-semibold hidden md:table-cell">Email</th>
+                    <th className="px-3 py-3 font-semibold">Provider</th>
+                    <th className="px-3 py-3 font-semibold hidden md:table-cell">Method</th>
                     <th className="px-3 py-3 font-semibold hidden lg:table-cell">Order ID</th>
-                    <th className="px-3 py-3 font-semibold hidden lg:table-cell">NP Payment ID</th>
+                    <th className="px-3 py-3 font-semibold hidden lg:table-cell">Payment ID</th>
                     <th className="px-3 py-3 font-semibold">Amount</th>
                     <th className="px-3 py-3 font-semibold hidden sm:table-cell">Currency</th>
-                    <th className="px-3 py-3 font-semibold hidden xl:table-cell">Tx Hash</th>
                     <th className="px-3 py-3 font-semibold">Status</th>
+                    <th className="px-3 py-3 font-semibold hidden md:table-cell">Verified</th>
                     <th className="px-3 py-3 font-semibold hidden md:table-cell">Date</th>
+                    <th className="px-3 py-3 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {cryptoFiltered.map((cp) => (
-                    <tr key={cp.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-3 py-3 font-medium text-ocean-900">{cp.applicant_name ?? '—'}</td>
-                      <td className="px-3 py-3 hidden md:table-cell text-slate-600">{cp.email ?? '—'}</td>
-                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono">{cp.order_id ?? '—'}</td>
-                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono">{cp.nowpayments_id ?? '—'}</td>
-                      <td className="px-3 py-3 font-semibold text-ocean-900">${cp.amount}</td>
-                      <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{cp.currency}</td>
-                      <td className="px-3 py-3 hidden xl:table-cell text-slate-400 text-xs font-mono max-w-[120px] truncate">{cp.transaction_hash ?? '—'}</td>
+                  {filteredPayments.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-3 py-3 font-medium text-ocean-900">{p.applicantName ?? '—'}</td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-600">{p.email ?? '—'}</td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          p.provider === '1Pay' ? 'bg-ocean-50 text-ocean-700 border border-ocean-200' :
+                          p.provider === 'Rampex' ? 'bg-gold-50 text-gold-700 border border-gold-200' :
+                          p.provider === 'NOWPayments' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>{p.provider}</span>
+                      </td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-600">{p.method}</td>
+                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono max-w-[120px] truncate">{p.orderId ?? '—'}</td>
+                      <td className="px-3 py-3 hidden lg:table-cell text-slate-500 text-xs font-mono">{p.paymentId ?? '—'}</td>
+                      <td className="px-3 py-3 font-semibold text-ocean-900">${p.amount}</td>
+                      <td className="px-3 py-3 hidden sm:table-cell text-slate-600">{p.currency}</td>
                       <td className="px-3 py-3">{(() => {
-                        const s = cp.status.toLowerCase();
-                        if (s === 'confirmed' || s === 'finished') return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> {cp.status}</span>;
-                        if (s === 'failed' || s === 'expired' || s === 'refunded') return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"><XCircle className="w-3 h-3" /> {cp.status}</span>;
-                        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><Loader2 className="w-3 h-3 animate-spin" /> {cp.status}</span>;
+                        const s = p.status.toLowerCase();
+                        if (s === 'verified' || s === 'completed' || s === 'paid' || s === 'confirmed' || s === 'finished')
+                          return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700"><CheckCircle2 className="w-3 h-3" /> {p.status}</span>;
+                        if (s === 'failed' || s === 'expired' || s === 'rejected' || s === 'refunded' || s === 'amount_mismatch' || s === 'currency_mismatch' || s === 'recheck_failed' || s === 'creation_failed')
+                          return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700"><XCircle className="w-3 h-3" /> {p.status}</span>;
+                        if (s === 'underpaid')
+                          return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><AlertCircle className="w-3 h-3" /> {p.status}</span>;
+                        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-700"><Loader2 className="w-3 h-3 animate-spin" /> {p.status}</span>;
                       })()}</td>
-                      <td className="px-3 py-3 hidden md:table-cell text-slate-500 text-xs">{cp.payment_date ? new Date(cp.payment_date).toLocaleDateString() : new Date(cp.created_at).toLocaleDateString()}</td>
+                      <td className="px-3 py-3 hidden md:table-cell">
+                        {p.verified
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><CheckCircle2 className="w-3.5 h-3.5" /> Yes</span>
+                          : <span className="text-xs text-slate-400">No</span>}
+                      </td>
+                      <td className="px-3 py-3 hidden md:table-cell text-slate-500 text-xs">{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : new Date(p.createdAt).toLocaleDateString()}</td>
+                      <td className="px-3 py-3 text-right">
+                        <button onClick={() => setPaymentDetail(p)} className="p-2 rounded-lg text-ocean-600 hover:bg-ocean-50 transition-colors" title="View payment details"><Eye className="w-4 h-4" /></button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -833,6 +1042,57 @@ export function AdminPage({ onNavigate }: { onNavigate: (page: string) => void }
           )}
         </GlassCard>
       </div>
+
+      {/* Payment detail modal */}
+      <Modal open={!!paymentDetail} onClose={() => setPaymentDetail(null)} title="Payment Details" maxWidth="max-w-md">
+        {paymentDetail && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-display font-bold text-lg text-ocean-900">{paymentDetail.applicantName ?? 'Unknown Applicant'}</h4>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                paymentDetail.provider === '1Pay' ? 'bg-ocean-50 text-ocean-700 border border-ocean-200' :
+                paymentDetail.provider === 'Rampex' ? 'bg-gold-50 text-gold-700 border border-gold-200' :
+                paymentDetail.provider === 'NOWPayments' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>{paymentDetail.provider}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <InfoRow icon={Mail} label="Email" value={paymentDetail.email ?? '—'} />
+              <InfoRow icon={CreditCard} label="Method" value={paymentDetail.method} />
+              <InfoRow icon={FileText} label="Order ID" value={paymentDetail.orderId ?? '—'} />
+              <InfoRow icon={Receipt} label="Payment ID" value={paymentDetail.paymentId ?? '—'} />
+              <InfoRow icon={TrendingUp} label="Amount" value={`${paymentDetail.amount} ${paymentDetail.currency}`} />
+              <InfoRow icon={CheckCircle2} label="Verified" value={paymentDetail.verified ? 'Yes' : 'No'} />
+              {paymentDetail.transactionHash && (
+                <InfoRow icon={FileText} label="Transaction" value={paymentDetail.transactionHash} />
+              )}
+              {paymentDetail.livemode != null && (
+                <InfoRow icon={CreditCard} label="Live Mode" value={paymentDetail.livemode ? 'Live' : 'Test'} />
+              )}
+              <InfoRow icon={Calendar} label="Created" value={new Date(paymentDetail.createdAt).toLocaleString()} />
+              {paymentDetail.paidAt && (
+                <InfoRow icon={CheckCircle2} label="Paid At" value={new Date(paymentDetail.paidAt).toLocaleString()} />
+              )}
+            </div>
+            {paymentDetail.checkoutUrl && (
+              <a href={paymentDetail.checkoutUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-ocean-50 text-ocean-700 text-sm font-medium hover:bg-ocean-100 transition-colors">
+                <ExternalLink className="w-4 h-4" /> View Checkout Page
+              </a>
+            )}
+            {paymentDetail.applicationId && (
+              <button
+                onClick={() => {
+                  const app = apps.find((a) => a.id === paymentDetail.applicationId);
+                  if (app) { setPaymentDetail(null); setSelected(app); }
+                }}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-gold-400 text-ocean-900 text-sm font-semibold hover:bg-gold-500 transition-colors w-full"
+              >
+                <Eye className="w-4 h-4" /> View Application
+              </button>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Manual email modal */}
       <ManualEmailModal

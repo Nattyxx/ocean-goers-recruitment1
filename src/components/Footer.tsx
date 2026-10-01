@@ -18,7 +18,7 @@ export function Footer({ onNavigate }: Props) {
 
   const socials = [
     { icon: Facebook, label: 'Facebook', href: '#' },
-    { icon: Send, label: 'Telegram', href: '#' },
+    { icon: Send, label: 'Telegram', href: 'https://t.me/Oceangoers' },
     { icon: MessageCircle, label: 'WhatsApp', href: '#' },
     { icon: Linkedin, label: 'LinkedIn', href: '#' },
   ];

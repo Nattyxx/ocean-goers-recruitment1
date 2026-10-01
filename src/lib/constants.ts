@@ -2,8 +2,8 @@ export const SUPPORT_CONTACTS = {
   telegram: {
     label: 'Telegram Support',
     text: 'Chat with us on Telegram',
-    username: '@OG_Recruitment_et',
-    url: 'https://t.me/OG_Recruitment_et',
+    username: '@Oceangoers',
+    url: 'https://t.me/Oceangoers',
   },
   whatsapp: {
     label: 'WhatsApp Support',

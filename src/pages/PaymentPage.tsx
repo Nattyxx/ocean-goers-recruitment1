@@ -265,7 +265,7 @@ export function PaymentPage() {
     const { error } = await supabase.from('payments').insert({
       user_id: user.id,
       application_id: application.id,
-      amount: 5000,
+      amount: 14800,
       currency: 'ETB',
       method,
       receipt_url: pub.publicUrl,
@@ -484,13 +484,13 @@ export function PaymentPage() {
             </div>
           </div>
           <div className="text-right">
-            <p className="font-display font-extrabold text-3xl text-gradient-ocean">5,000 ETB</p>
+            <p className="font-display font-extrabold text-3xl text-gradient-ocean">14,800 ETB</p>
             <p className="text-xs text-slate-400">≈ $90 USD</p>
           </div>
         </div>
 
         <div className="mt-5 pt-5 border-t border-slate-100">
-          <p className="text-sm font-medium text-ocean-700 mb-1">Registration Fee: <span className="font-bold text-ocean-900">5,000 ETB</span> (≈ $90 USD)</p>
+          <p className="text-sm font-medium text-ocean-700 mb-1">Registration Fee: <span className="font-bold text-ocean-900">14,800 ETB</span> (≈ $90 USD)</p>
           <p className="text-sm text-slate-500 mb-4">Transfer to any of the accounts below, then upload your receipt for verification.</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -662,7 +662,7 @@ export function PaymentPage() {
       {/* Upload receipt */}
       <GlassCard className="mb-6">
         <h3 className="font-display font-semibold text-lg text-ocean-900 mb-2">Upload Payment Receipt</h3>
-        <p className="text-sm text-slate-500 mb-4">After transferring 5,000 ETB to one of the accounts above, upload your receipt here for verification.</p>
+        <p className="text-sm text-slate-500 mb-4">After transferring 14,800 ETB to one of the accounts above, upload your receipt here for verification.</p>
 
         {latestPayment?.status === 'Pending' && (
           <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-700 flex items-center gap-2">

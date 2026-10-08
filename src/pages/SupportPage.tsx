@@ -13,7 +13,7 @@ const EMAIL_LINK = 'mailto:info@oceangoers.com?subject=Support%20Request';
 const FAQS = [
   { q: 'How long does the application process take?', a: 'The full process typically takes 4-8 weeks from application to deployment, depending on document verification and visa processing.' },
   { q: 'What documents do I need?', a: 'You will need a valid passport, CV, medical certificate, seaman book, STCW certificate, police clearance, educational certificates, and a passport photo.' },
-  { q: 'What is the registration fee?', a: 'A one-time registration fee of 5,000 ETB (or $90 USD via crypto) covers document processing and administrative costs.' },
+  { q: 'What is the registration fee?', a: 'A one-time registration fee of 14,800 ETB (≈ $90 USD, or $90 USD via crypto) covers document processing and administrative costs.' },
   { q: 'Do you guarantee job placement?', a: 'While we cannot guarantee placement, our success rate exceeds 85% for candidates who complete all requirements.' },
   { q: 'Can I edit my application after submitting?', a: 'You can edit your application until it enters "Under Review" status. After that, changes are disabled.' },
   { q: 'How do I check my application status?', a: 'Log in to your dashboard and visit the My Application page to see your current status and progress timeline.' },

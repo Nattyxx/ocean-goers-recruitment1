@@ -339,7 +339,7 @@ export function SupportPage() {
   const faqs = [
     { q: 'How long does the application process take?', a: 'The full process typically takes 4-8 weeks from application to deployment, depending on document verification and visa processing.' },
     { q: 'What documents do I need?', a: 'You\'ll need a valid passport, CV, medical certificate, seaman book, STCW certificate, police clearance, educational certificates, and a passport photo.' },
-    { q: 'What is the registration fee?', a: 'A one-time registration fee of 5,000 ETB covers document processing and administrative costs.' },
+    { q: 'What is the registration fee?', a: 'A one-time registration fee of 14,800 ETB (≈ $90 USD) covers document processing and administrative costs.' },
     { q: 'Do you guarantee job placement?', a: 'While we cannot guarantee placement, our success rate exceeds 85% for candidates who complete all requirements.' },
   ];
 
@@ -500,7 +500,7 @@ export function TermsPage() {
         <h3 className="font-display font-semibold text-ocean-900">Eligibility</h3>
         <p>Applicants must be at least 18 years old and possess valid travel documents. Certain positions may have additional age or qualification requirements.</p>
         <h3 className="font-display font-semibold text-ocean-900">Registration Fee</h3>
-        <p>A non-refundable registration fee of 5,000 ETB is required to process your application. This covers administrative and document processing costs.</p>
+        <p>A non-refundable registration fee of 14,800 ETB (≈ $90 USD) is required to process your application. This covers administrative and document processing costs.</p>
         <h3 className="font-display font-semibold text-ocean-900">Document Accuracy</h3>
         <p>All submitted documents must be authentic and valid. Submission of fraudulent documents will result in immediate disqualification and possible legal action.</p>
         <h3 className="font-display font-semibold text-ocean-900">Placement</h3>

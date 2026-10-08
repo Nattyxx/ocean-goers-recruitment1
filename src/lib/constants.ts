@@ -96,7 +96,7 @@ export const POSITIONS = [
   'Electrician', 'Plumber', 'Beautician', 'Photographer', 'Receptionist',
 ] as const;
 
-export const PAYMENT_METHODS = ['CBE', 'Telebirr', 'M-PESA'] as const;
+export const PAYMENT_METHODS = ['CBE', 'Telebirr'] as const;
 
 export const PAYMENT_ACCOUNTS = [
   {
@@ -117,16 +117,6 @@ export const PAYMENT_ACCOUNTS = [
     swiftCode: '',
     branch: 'Registered under Ocean Goers',
     color: 'from-sky-500 to-sky-700',
-    icon: 'Smartphone',
-  },
-  {
-    method: 'M-PESA',
-    label: 'M-PESA Mobile Money',
-    accountName: 'Ocean Goers Recruitment',
-    accountNumber: '0712345678',
-    swiftCode: '',
-    branch: 'Registered under Ocean Goers',
-    color: 'from-lime-500 to-lime-700',
     icon: 'Smartphone',
   },
 ] as const;

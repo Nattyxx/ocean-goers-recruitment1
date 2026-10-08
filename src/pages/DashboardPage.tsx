@@ -252,7 +252,7 @@ export function DashboardPage({ onNavigate }: Props) {
               <div>
                 <h3 className="font-display font-bold text-lg text-ocean-900">Registration Fee Required</h3>
                 <p className="text-sm text-slate-600 mt-0.5">
-                  All documents uploaded. Pay the <span className="font-semibold text-ocean-800">14,800 ETB</span> registration fee to proceed.
+                  All documents uploaded. Pay the <span className="font-semibold text-ocean-800">14,800 ETB</span> (<span className="font-semibold text-ocean-800">$90 USD</span>) registration fee to proceed.
                 </p>
                 {payment?.status === 'Rejected' && (
                   <p className="text-sm text-rose-600 mt-1 font-medium">
